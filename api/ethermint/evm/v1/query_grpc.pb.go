@@ -22,18 +22,20 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	Query_Account_FullMethodName          = "/ethermint.evm.v1.Query/Account"
-	Query_CosmosAccount_FullMethodName    = "/ethermint.evm.v1.Query/CosmosAccount"
-	Query_ValidatorAccount_FullMethodName = "/ethermint.evm.v1.Query/ValidatorAccount"
-	Query_Balance_FullMethodName          = "/ethermint.evm.v1.Query/Balance"
-	Query_Storage_FullMethodName          = "/ethermint.evm.v1.Query/Storage"
-	Query_Code_FullMethodName             = "/ethermint.evm.v1.Query/Code"
-	Query_Params_FullMethodName           = "/ethermint.evm.v1.Query/Params"
-	Query_EthCall_FullMethodName          = "/ethermint.evm.v1.Query/EthCall"
-	Query_EstimateGas_FullMethodName      = "/ethermint.evm.v1.Query/EstimateGas"
-	Query_TraceTx_FullMethodName          = "/ethermint.evm.v1.Query/TraceTx"
-	Query_TraceBlock_FullMethodName       = "/ethermint.evm.v1.Query/TraceBlock"
-	Query_BaseFee_FullMethodName          = "/ethermint.evm.v1.Query/BaseFee"
+	Query_Account_FullMethodName                 = "/ethermint.evm.v1.Query/Account"
+	Query_CosmosAccount_FullMethodName           = "/ethermint.evm.v1.Query/CosmosAccount"
+	Query_ValidatorAccount_FullMethodName        = "/ethermint.evm.v1.Query/ValidatorAccount"
+	Query_Balance_FullMethodName                 = "/ethermint.evm.v1.Query/Balance"
+	Query_Storage_FullMethodName                 = "/ethermint.evm.v1.Query/Storage"
+	Query_Code_FullMethodName                    = "/ethermint.evm.v1.Query/Code"
+	Query_Params_FullMethodName                  = "/ethermint.evm.v1.Query/Params"
+	Query_EthCall_FullMethodName                 = "/ethermint.evm.v1.Query/EthCall"
+	Query_EthCallWithOverride_FullMethodName     = "/ethermint.evm.v1.Query/EthCallWithOverride"
+	Query_EstimateGasWithOverride_FullMethodName = "/ethermint.evm.v1.Query/EstimateGasWithOverride"
+	Query_EstimateGas_FullMethodName             = "/ethermint.evm.v1.Query/EstimateGas"
+	Query_TraceTx_FullMethodName                 = "/ethermint.evm.v1.Query/TraceTx"
+	Query_TraceBlock_FullMethodName              = "/ethermint.evm.v1.Query/TraceBlock"
+	Query_BaseFee_FullMethodName                 = "/ethermint.evm.v1.Query/BaseFee"
 )
 
 // QueryClient is the client API for Query service.
@@ -58,6 +60,10 @@ type QueryClient interface {
 	Params(ctx context.Context, in *QueryParamsRequest, opts ...grpc.CallOption) (*QueryParamsResponse, error)
 	// EthCall implements the `eth_call` rpc api
 	EthCall(ctx context.Context, in *EthCallRequest, opts ...grpc.CallOption) (*MsgEthereumTxResponse, error)
+	// EthCall implements the `eth_call` rpc api
+	EthCallWithOverride(ctx context.Context, in *EthCallWithOverrideRequest, opts ...grpc.CallOption) (*MsgEthereumTxResponse, error)
+	// EthCall implements the `eth_call` rpc api
+	EstimateGasWithOverride(ctx context.Context, in *EthCallWithOverrideRequest, opts ...grpc.CallOption) (*EstimateGasResponse, error)
 	// EstimateGas implements the `eth_estimateGas` rpc api
 	EstimateGas(ctx context.Context, in *EthCallRequest, opts ...grpc.CallOption) (*EstimateGasResponse, error)
 	// TraceTx implements the `debug_traceTransaction` rpc api
@@ -149,6 +155,24 @@ func (c *queryClient) EthCall(ctx context.Context, in *EthCallRequest, opts ...g
 	return out, nil
 }
 
+func (c *queryClient) EthCallWithOverride(ctx context.Context, in *EthCallWithOverrideRequest, opts ...grpc.CallOption) (*MsgEthereumTxResponse, error) {
+	out := new(MsgEthereumTxResponse)
+	err := c.cc.Invoke(ctx, Query_EthCallWithOverride_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *queryClient) EstimateGasWithOverride(ctx context.Context, in *EthCallWithOverrideRequest, opts ...grpc.CallOption) (*EstimateGasResponse, error) {
+	out := new(EstimateGasResponse)
+	err := c.cc.Invoke(ctx, Query_EstimateGasWithOverride_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *queryClient) EstimateGas(ctx context.Context, in *EthCallRequest, opts ...grpc.CallOption) (*EstimateGasResponse, error) {
 	out := new(EstimateGasResponse)
 	err := c.cc.Invoke(ctx, Query_EstimateGas_FullMethodName, in, out, opts...)
@@ -207,6 +231,10 @@ type QueryServer interface {
 	Params(context.Context, *QueryParamsRequest) (*QueryParamsResponse, error)
 	// EthCall implements the `eth_call` rpc api
 	EthCall(context.Context, *EthCallRequest) (*MsgEthereumTxResponse, error)
+	// EthCall implements the `eth_call` rpc api
+	EthCallWithOverride(context.Context, *EthCallWithOverrideRequest) (*MsgEthereumTxResponse, error)
+	// EthCall implements the `eth_call` rpc api
+	EstimateGasWithOverride(context.Context, *EthCallWithOverrideRequest) (*EstimateGasResponse, error)
 	// EstimateGas implements the `eth_estimateGas` rpc api
 	EstimateGas(context.Context, *EthCallRequest) (*EstimateGasResponse, error)
 	// TraceTx implements the `debug_traceTransaction` rpc api
@@ -246,6 +274,12 @@ func (UnimplementedQueryServer) Params(context.Context, *QueryParamsRequest) (*Q
 }
 func (UnimplementedQueryServer) EthCall(context.Context, *EthCallRequest) (*MsgEthereumTxResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method EthCall not implemented")
+}
+func (UnimplementedQueryServer) EthCallWithOverride(context.Context, *EthCallWithOverrideRequest) (*MsgEthereumTxResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method EthCallWithOverride not implemented")
+}
+func (UnimplementedQueryServer) EstimateGasWithOverride(context.Context, *EthCallWithOverrideRequest) (*EstimateGasResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method EstimateGasWithOverride not implemented")
 }
 func (UnimplementedQueryServer) EstimateGas(context.Context, *EthCallRequest) (*EstimateGasResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method EstimateGas not implemented")
@@ -416,6 +450,42 @@ func _Query_EthCall_Handler(srv interface{}, ctx context.Context, dec func(inter
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Query_EthCallWithOverride_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EthCallWithOverrideRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).EthCallWithOverride(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Query_EthCallWithOverride_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).EthCallWithOverride(ctx, req.(*EthCallWithOverrideRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Query_EstimateGasWithOverride_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EthCallWithOverrideRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).EstimateGasWithOverride(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Query_EstimateGasWithOverride_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).EstimateGasWithOverride(ctx, req.(*EthCallWithOverrideRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Query_EstimateGas_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(EthCallRequest)
 	if err := dec(in); err != nil {
@@ -526,6 +596,14 @@ var Query_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "EthCall",
 			Handler:    _Query_EthCall_Handler,
+		},
+		{
+			MethodName: "EthCallWithOverride",
+			Handler:    _Query_EthCallWithOverride_Handler,
+		},
+		{
+			MethodName: "EstimateGasWithOverride",
+			Handler:    _Query_EstimateGasWithOverride_Handler,
 		},
 		{
 			MethodName: "EstimateGas",

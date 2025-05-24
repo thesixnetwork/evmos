@@ -57,6 +57,16 @@ service Query {
     option (google.api.http).get = "/evmos/evm/v1/eth_call";
   }
 
+  // EthCall implements the `eth_call` rpc api
+  rpc EthCallWithOverride(EthCallWithOverrideRequest) returns (MsgEthereumTxResponse) {
+    option (google.api.http).get = "/ethermint/evm/v1/eth_call_overides";
+  }
+
+  // EthCall implements the `eth_call` rpc api
+  rpc EstimateGasWithOverride(EthCallWithOverrideRequest) returns (EstimateGasResponse) {
+    option (google.api.http).get = "/evmos/evm/v1/estimate_gas_overides";
+  }
+
   // EstimateGas implements the `eth_estimateGas` rpc api
   rpc EstimateGas(EthCallRequest) returns (EstimateGasResponse) {
     option (google.api.http).get = "/evmos/evm/v1/estimate_gas";
@@ -230,6 +240,20 @@ message EthCallRequest {
   int64 chain_id = 4;
 }
 
+// EthCallWithOverrideRequest defines EthCall request
+message EthCallWithOverrideRequest {
+  // args uses the same json format as the json rpc api.
+  bytes args = 1;
+  // gas_cap defines the default gas cap to be used
+  uint64 gas_cap = 2;
+  // proposer_address of the requested block in hex format
+  bytes proposer_address = 3 [(gogoproto.casttype) = "github.com/cosmos/cosmos-sdk/types.ConsAddress"];
+  // chain_id is the eip155 chain id parsed from the requested block header
+  int64 chain_id = 4;
+
+  StateOverride overrides = 5;
+}
+
 // EstimateGasResponse defines EstimateGas response
 message EstimateGasResponse {
   // gas returns the estimated gas
@@ -309,4 +333,18 @@ message QueryBaseFeeRequest {}
 message QueryBaseFeeResponse {
   // base_fee is the EIP1559 base fee
   string base_fee = 1 [(gogoproto.customtype) = "cosmossdk.io/math.Int"];
+}
+
+
+message OverrideAccount {
+  uint64 nonce = 1;
+  bytes code = 2;
+  string balance = 3;
+  map<string, string> state = 4;
+  map<string, string> state_diff = 5; 
+}
+
+// StateOverride is a map of addresses to OverrideAccount.
+message StateOverride {
+  map<string, OverrideAccount> accounts = 1;
 }
