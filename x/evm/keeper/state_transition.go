@@ -21,6 +21,7 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	evmoscore "github.com/evmos/evmos/v20/x/evm/core/core"
 	"github.com/evmos/evmos/v20/x/evm/core/vm"
+	rpctypes "github.com/evmos/evmos/v20/rpc/types"
 )
 
 // NewEVM generates a go-ethereum VM from the provided Message fields and the chain parameters
@@ -168,7 +169,7 @@ func (k *Keeper) ApplyTransaction(ctx sdk.Context, tx *ethtypes.Transaction) (*t
 	tmpCtx, commit := ctx.CacheContext()
 
 	// pass true to commit the StateDB
-	res, err := k.ApplyMessageWithConfig(tmpCtx, msg, nil, true, cfg, txConfig)
+	res, err := k.ApplyMessageWithConfig(tmpCtx, msg, nil, true, cfg, txConfig, nil)
 	if err != nil {
 		// when a transaction contains multiple msg, as long as one of the msg fails
 		// all gas will be deducted. so is not msg.Gas()
@@ -219,7 +220,7 @@ func (k *Keeper) ApplyMessage(ctx sdk.Context, msg core.Message, tracer vm.EVMLo
 	}
 
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash()))
-	return k.ApplyMessageWithConfig(ctx, msg, tracer, commit, cfg, txConfig)
+	return k.ApplyMessageWithConfig(ctx, msg, tracer, commit, cfg, txConfig, nil)
 }
 
 // ApplyMessageWithConfig computes the new state by applying the given message against the existing state.
@@ -267,6 +268,7 @@ func (k *Keeper) ApplyMessageWithConfig(
 	commit bool,
 	cfg *statedb.EVMConfig,
 	txConfig statedb.TxConfig,
+	overrides *rpctypes.StateOverride,
 ) (*types.MsgEthereumTxResponse, error) {
 	var (
 		ret   []byte // return bytes from evm execution
@@ -275,6 +277,10 @@ func (k *Keeper) ApplyMessageWithConfig(
 
 	stateDB := statedb.New(ctx, k, txConfig)
 	evm := k.NewEVM(ctx, msg, cfg, tracer, stateDB)
+
+	if err := overrides.Apply(stateDB); err != nil {
+		return nil, err
+	}
 
 	leftoverGas := msg.Gas()
 

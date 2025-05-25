@@ -397,6 +397,20 @@ func (s *StateDB) SetState(addr common.Address, key, value common.Hash) {
 	}
 }
 
+func (s *StateDB) SetBalance(addr common.Address, amount *big.Int) {
+	stateObject := s.getOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetBalance(amount)
+	}
+}
+
+func (s *StateDB) SetStorage(addr common.Address, storage map[common.Hash]common.Hash) {
+	stateObject := s.getOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetStorage(storage)
+	}
+}
+
 // Suicide marks the given account as suicided.
 // This clears the account balance.
 //

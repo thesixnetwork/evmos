@@ -197,6 +197,36 @@ func (_m *EVMQueryClient) EstimateGas(ctx context.Context, in *types.EthCallRequ
 	return r0, r1
 }
 
+// EstimateGas provides a mock function with given fields: ctx, in, opts
+func (_m *EVMQueryClient) EstimateGasWithOverride(ctx context.Context, in *types.EthCallWithOverrideRequest, opts ...grpc.CallOption) (*types.EstimateGasResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 *types.EstimateGasResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *types.EthCallWithOverrideRequest, ...grpc.CallOption) *types.EstimateGasResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.EstimateGasResponse)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, *types.EthCallWithOverrideRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // EthCall provides a mock function with given fields: ctx, in, opts
 func (_m *EVMQueryClient) EthCall(ctx context.Context, in *types.EthCallRequest, opts ...grpc.CallOption) (*types.MsgEthereumTxResponse, error) {
 	_va := make([]interface{}, len(opts))
@@ -219,6 +249,36 @@ func (_m *EVMQueryClient) EthCall(ctx context.Context, in *types.EthCallRequest,
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, *types.EthCallRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// EthCall provides a mock function with given fields: ctx, in, opts
+func (_m *EVMQueryClient) EthCallWithOverride(ctx context.Context, in *types.EthCallWithOverrideRequest, opts ...grpc.CallOption) (*types.MsgEthereumTxResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 *types.MsgEthereumTxResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *types.EthCallWithOverrideRequest, ...grpc.CallOption) *types.MsgEthereumTxResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.MsgEthereumTxResponse)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, *types.EthCallWithOverrideRequest, ...grpc.CallOption) error); ok {
 		r1 = rf(ctx, in, opts...)
 	} else {
 		r1 = ret.Error(1)

@@ -31,6 +31,7 @@ import (
 	evmante "github.com/evmos/evmos/v20/x/evm/ante"
 	"github.com/evmos/evmos/v20/x/evm/statedb"
 	"github.com/evmos/evmos/v20/x/evm/types"
+	rpcrtypes "github.com/evmos/evmos/v20/rpc/types"
 )
 
 var _ types.QueryServer = Keeper{}
@@ -251,7 +252,7 @@ func (k Keeper) EthCall(c context.Context, req *types.EthCallRequest) (*types.Ms
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash()))
 
 	// pass false to not commit StateDB
-	res, err := k.ApplyMessageWithConfig(ctx, msg, nil, false, cfg, txConfig)
+	res, err := k.ApplyMessageWithConfig(ctx, msg, nil, false, cfg, txConfig, nil)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -379,7 +380,7 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 			tmpCtx = evmante.BuildEvmExecutionCtx(tmpCtx).WithGasMeter(gasMeter)
 		}
 		// pass false to not commit StateDB
-		rsp, err = k.ApplyMessageWithConfig(tmpCtx, msg, nil, false, cfg, txConfig)
+		rsp, err = k.ApplyMessageWithConfig(tmpCtx, msg, nil, false, cfg, txConfig, nil)
 		if err != nil {
 			if errors.Is(err, core.ErrIntrinsicGas) {
 				return true, nil, nil // Special case, raise gas limit
@@ -482,7 +483,7 @@ func (k Keeper) TraceTx(c context.Context, req *types.QueryTraceTxRequest) (*typ
 		// reset gas meter for each transaction
 		ctx = evmante.BuildEvmExecutionCtx(ctx).
 			WithGasMeter(evmostypes.NewInfiniteGasMeterWithLimit(msg.Gas()))
-		rsp, err := k.ApplyMessageWithConfig(ctx, msg, types.NewNoOpTracer(), true, cfg, txConfig)
+		rsp, err := k.ApplyMessageWithConfig(ctx, msg, types.NewNoOpTracer(), true, cfg, txConfig, nil)
 		if err != nil {
 			continue
 		}
@@ -669,7 +670,7 @@ func (k *Keeper) traceTx(
 	// Build EVM execution context
 	ctx = evmante.BuildEvmExecutionCtx(ctx).
 		WithGasMeter(evmostypes.NewInfiniteGasMeterWithLimit(msg.Gas()))
-	res, err := k.ApplyMessageWithConfig(ctx, msg, tracer, commitMessage, cfg, txConfig)
+	res, err := k.ApplyMessageWithConfig(ctx, msg, tracer, commitMessage, cfg, txConfig, nil)
 	if err != nil {
 		return nil, 0, status.Error(codes.Internal, err.Error())
 	}
@@ -706,4 +707,167 @@ func getChainID(ctx sdk.Context, chainID int64) (*big.Int, error) {
 		return evmostypes.ParseChainID(ctx.ChainID())
 	}
 	return big.NewInt(chainID), nil
+}
+
+
+func (k Keeper) EstimateGasWithOverride(c context.Context, req *types.EthCallWithOverrideRequest) (*types.EstimateGasResponse, error) {
+	return k.EstimateGasInternalWithOveride(c, req, types.RPC)
+}
+
+func (k Keeper) EstimateGasInternalWithOveride(c context.Context, req *types.EthCallWithOverrideRequest, fromType types.CallType) (*types.EstimateGasResponse, error) {
+		if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "empty request")
+	}
+
+	ctx := sdk.UnwrapSDKContext(c)
+	chainID, err := getChainID(ctx, req.ChainId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	if req.GasCap < ethparams.TxGas {
+		return nil, status.Errorf(codes.InvalidArgument, "gas cap cannot be lower than %d", ethparams.TxGas)
+	}
+
+	var args types.TransactionArgs
+	err = json.Unmarshal(req.Args, &args)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	// Binary search the gas requirement, as it may be higher than the amount used
+	var (
+		lo     = ethparams.TxGas - 1
+		hi     uint64
+		gasCap uint64
+	)
+
+	// Determine the highest gas limit can be used during the estimation.
+	if args.Gas != nil && uint64(*args.Gas) >= ethparams.TxGas {
+		hi = uint64(*args.Gas)
+	} else {
+		// Query block gas limit
+		params := ctx.ConsensusParams()
+		if params.Block != nil && params.Block.MaxGas > 0 {
+			hi = uint64(params.Block.MaxGas) //nolint:gosec // G115
+		} else {
+			hi = req.GasCap
+		}
+	}
+
+	// TODO: Recap the highest gas limit with account's available balance.
+
+	// Recap the highest gas allowance with specified gascap.
+	if req.GasCap != 0 && hi > req.GasCap {
+		hi = req.GasCap
+	}
+
+	gasCap = hi
+	cfg, err := k.EVMConfig(ctx, GetProposerAddress(ctx, req.ProposerAddress), chainID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to load evm config")
+	}
+
+	// ApplyMessageWithConfig expect correct nonce set in msg
+	nonce := k.GetNonce(ctx, args.GetFrom())
+	args.Nonce = (*hexutil.Uint64)(&nonce)
+
+	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash()))
+
+	// convert the tx args to an ethereum message
+	msg, err := args.ToMessage(req.GasCap, cfg.BaseFee)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	// NOTE: the errors from the executable below should be consistent with go-ethereum,
+	// so we don't wrap them with the gRPC status code
+
+	// Create a helper to check if a gas allowance results in an executable transaction
+	executable := func(gas uint64) (vmError bool, rsp *types.MsgEthereumTxResponse, err error) {
+		// update the message with the new gas value
+		msg = ethtypes.NewMessage(
+			msg.From(),
+			msg.To(),
+			msg.Nonce(),
+			msg.Value(),
+			gas,
+			msg.GasPrice(),
+			msg.GasFeeCap(),
+			msg.GasTipCap(),
+			msg.Data(),
+			msg.AccessList(),
+			msg.IsFake(),
+		)
+
+		tmpCtx := ctx
+		if fromType == types.RPC {
+			tmpCtx, _ = ctx.CacheContext()
+
+			acct := k.GetAccount(tmpCtx, msg.From())
+
+			from := msg.From()
+			if acct == nil {
+				acc := k.accountKeeper.NewAccountWithAddress(tmpCtx, from[:])
+				k.accountKeeper.SetAccount(tmpCtx, acc)
+				acct = statedb.NewEmptyAccount()
+			}
+			// When submitting a transaction, the `EthIncrementSenderSequence` ante handler increases the account nonce
+			acct.Nonce = nonce + 1
+			err = k.SetAccount(tmpCtx, from, *acct)
+			if err != nil {
+				return true, nil, err
+			}
+			// resetting the gasMeter after increasing the sequence to have an accurate gas estimation on EVM extensions transactions
+			gasMeter := evmostypes.NewInfiniteGasMeterWithLimit(msg.Gas())
+			tmpCtx = evmante.BuildEvmExecutionCtx(tmpCtx).WithGasMeter(gasMeter)
+		}
+
+		rpcOverides := rpcrtypes.FromProtoStateOverride(req.Overrides)
+
+		// pass false to not commit StateDB
+		rsp, err = k.ApplyMessageWithConfig(tmpCtx, msg, nil, false, cfg, txConfig, &rpcOverides)
+		if err != nil {
+			if errors.Is(err, core.ErrIntrinsicGas) {
+				return true, nil, nil // Special case, raise gas limit
+			}
+			return true, nil, err // Bail out
+		}
+		return len(rsp.VmError) > 0, rsp, nil
+	}
+
+	// Execute the binary search and hone in on an executable gas limit
+	hi, err = types.BinSearch(lo, hi, executable)
+	if err != nil {
+		return nil, err
+	}
+
+	// Reject the transaction as invalid if it still fails at the highest allowance
+	if hi == gasCap {
+		failed, result, err := executable(hi)
+		if err != nil {
+			return nil, err
+		}
+
+		if failed {
+			if result != nil && result.VmError != vm.ErrOutOfGas.Error() {
+				if result.VmError == vm.ErrExecutionReverted.Error() {
+					return &types.EstimateGasResponse{
+						Ret:     result.Ret,
+						VmError: result.VmError,
+					}, nil
+				}
+				return nil, errors.New(result.VmError)
+			}
+			// Otherwise, the specified gas cap is too low
+			return nil, fmt.Errorf("gas required exceeds allowance (%d)", gasCap)
+		}
+	}
+	return &types.EstimateGasResponse{Gas: hi}, nil
+}
+
+
+// EthCallWithOverride implements types.QueryServer.
+func (k Keeper) EthCallWithOverride(context.Context, *types.EthCallWithOverrideRequest) (*types.MsgEthereumTxResponse, error) {
+	panic("unimplemented")
 }

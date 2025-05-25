@@ -348,3 +348,21 @@ message OverrideAccount {
 message StateOverride {
   map<string, OverrideAccount> accounts = 1;
 }
+
+message BlockOverrides {
+  string number = 1;
+  string defficulty = 2;
+  uint64 time = 3;
+  uint64 gas_limit = 4;
+  string coinbase = 5;
+  string random = 6;
+  string base_fee = 7;
+  string blob_base_fee = 8;
+}
+
+
+message TraceCallConfig {
+  TraceConfig trace_config = 1;
+  StateOverride state_overrides = 2;
+  BlockOverrides block_overrieds = 3;
+}
