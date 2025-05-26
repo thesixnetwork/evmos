@@ -16,6 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/params"
 	utiltx "github.com/evmos/evmos/v20/testutil/tx"
 	"github.com/evmos/evmos/v20/x/evm/core/vm"
 	"github.com/evmos/evmos/v20/x/evm/statedb"
@@ -470,11 +471,8 @@ func (suite *KeeperTestSuite) TestSuicide() {
 		db.SetState(addr2, common.BytesToHash([]byte(fmt.Sprintf("key%d", i))), common.BytesToHash([]byte(fmt.Sprintf("value%d", i))))
 	}
 
-	// Call Suicide
-	suite.Require().Equal(true, db.Suicide(addr1))
-
 	// Check suicided is marked
-	suite.Require().Equal(true, db.HasSuicided(addr1))
+	suite.Require().Equal(true, db.HasSelfDestructed(addr1))
 
 	// Commit state
 	suite.Require().NoError(db.Commit())
@@ -495,7 +493,7 @@ func (suite *KeeperTestSuite) TestSuicide() {
 
 	// Check code is still present in addr2 and suicided is false
 	suite.Require().NotNil(db.GetCode(addr2))
-	suite.Require().Equal(false, db.HasSuicided(addr2))
+	suite.Require().Equal(false, db.HasSelfDestructed(addr2))
 }
 
 func (suite *KeeperTestSuite) TestExist() {
@@ -507,7 +505,7 @@ func (suite *KeeperTestSuite) TestExist() {
 	}{
 		{"success, account exists", suite.keyring.GetAddr(0), func(vm.StateDB) {}, true},
 		{"success, has suicided", suite.keyring.GetAddr(0), func(vmdb vm.StateDB) {
-			vmdb.Suicide(suite.keyring.GetAddr(0))
+			vmdb.SelfDestruct(suite.keyring.GetAddr(0))
 		}, true},
 		{"success, account doesn't exist", utiltx.GenerateAddress(), func(vm.StateDB) {}, false},
 	}
@@ -753,7 +751,7 @@ func (suite *KeeperTestSuite) TestPrepareAccessList() {
 	}
 
 	vmdb := suite.StateDB()
-	vmdb.PrepareAccessList(suite.keyring.GetAddr(0), &dest, precompiles, accesses)
+	vmdb.Prepare(params.Rules{}, common.Address{1}, suite.keyring.GetAddr(0), &dest, precompiles, accesses)
 
 	suite.Require().True(vmdb.AddressInAccessList(suite.keyring.GetAddr(0)))
 	suite.Require().True(vmdb.AddressInAccessList(dest))

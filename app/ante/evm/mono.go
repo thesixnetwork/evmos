@@ -84,7 +84,8 @@ func NewMonoDecoratorUtils(
 	chainCfg := evmParams.GetChainConfig()
 	ethCfg := chainCfg.EthereumConfig(ek.ChainID())
 	blockHeight := big.NewInt(ctx.BlockHeight())
-	rules := ethCfg.Rules(blockHeight, true)
+	blockTime := uint64(ctx.BlockTime().Unix())
+	rules := ethCfg.Rules(blockHeight, true, blockTime)
 	baseFee := ek.GetBaseFee(ctx, ethCfg)
 	feeMarketParams := fmk.GetParams(ctx)
 
@@ -99,7 +100,7 @@ func NewMonoDecoratorUtils(
 		EvmParams:          evmParams,
 		EthConfig:          ethCfg,
 		Rules:              rules,
-		Signer:             ethtypes.MakeSigner(ethCfg, blockHeight),
+		Signer:             ethtypes.MakeSigner(ethCfg, blockHeight, blockTime),
 		BaseFee:            baseFee,
 		MempoolMinGasPrice: ctx.MinGasPrices().AmountOf(evmParams.EvmDenom),
 		GlobalMinGasPrice:  feeMarketParams.MinGasPrice,
@@ -207,7 +208,7 @@ func (md MonoDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, ne
 		}
 
 		// 7. can transfer
-		coreMsg, err := ethMsg.AsMessage(decUtils.Signer, decUtils.BaseFee)
+		coreMsg, err := ethMsg.AsMessage(ethMsg.AsTransaction(),decUtils.Signer, decUtils.BaseFee)
 		if err != nil {
 			return ctx, errorsmod.Wrapf(
 				err,
@@ -254,6 +255,7 @@ func (md MonoDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, ne
 			decUtils.BaseFee,
 			decUtils.Rules.IsHomestead,
 			decUtils.Rules.IsIstanbul,
+			decUtils.Rules.IsLondon,
 			ctx.IsCheckTx(),
 		)
 		if err != nil {

@@ -295,8 +295,49 @@ func (msg MsgEthereumTx) AsTransaction() *ethtypes.Transaction {
 }
 
 // AsMessage creates an Ethereum core.Message from the msg fields
-func (msg MsgEthereumTx) AsMessage(signer ethtypes.Signer, baseFee *big.Int) (core.Message, error) {
-	return msg.AsTransaction().AsMessage(signer, baseFee)
+func (msg MsgEthereumTx) AsMessage(msgTx *ethtypes.Transaction, signer ethtypes.Signer, baseFee *big.Int) (core.Message, error) {
+	sender, err := signer.Sender(msgTx)
+	if err != nil {
+		return core.Message{}, err
+	}
+
+	return core.Message{
+		To:                msgTx.To(),
+		From:              sender,
+		Nonce:             msgTx.Nonce(),
+		Value:             msgTx.Value(),
+		GasLimit:          msgTx.Gas(),
+		GasPrice:          msgTx.GasPrice(),
+		GasFeeCap:         msgTx.GasFeeCap(),
+		GasTipCap:         msgTx.GasTipCap(),
+		Data:              msgTx.Data(),
+		AccessList:        msgTx.AccessList(),
+		SkipAccountChecks: false,
+	}, nil
+}
+
+// AsMessage creates an Ethereum core.Message from the msg fields
+func (msg MsgEthereumTx) AsMessageWithBlob(msgTx *ethtypes.Transaction, signer ethtypes.Signer, baseFee *big.Int) (core.Message, error) {
+	sender, err := signer.Sender(msgTx)
+	if err != nil {
+		return core.Message{}, err
+	}
+
+	return core.Message{
+		To:                msgTx.To(),
+		From:              sender,
+		Nonce:             msgTx.Nonce(),
+		Value:             msgTx.Value(),
+		GasLimit:          msgTx.Gas(),
+		GasPrice:          msgTx.GasPrice(),
+		GasFeeCap:         msgTx.GasFeeCap(),
+		GasTipCap:         msgTx.GasTipCap(),
+		Data:              msgTx.Data(),
+		AccessList:        msgTx.AccessList(),
+		BlobGasFeeCap:     msgTx.BlobGasFeeCap(),
+		BlobHashes:        msgTx.BlobHashes(),
+		SkipAccountChecks: false,
+	}, nil
 }
 
 // GetSender extracts the sender address from the signature values using the latest signer for the given chainID.

@@ -154,7 +154,7 @@ func (diff *BlockOverrides) Apply(blockCtx *vm.BlockContext) {
 		blockCtx.Difficulty = diff.Difficulty.ToInt()
 	}
 	if diff.Time != nil {
-		blockCtx.Time = big.NewInt(int64(*diff.Time))
+		blockCtx.Time = uint64(*diff.Time)
 	}
 	if diff.GasLimit != nil {
 		blockCtx.GasLimit = uint64(*diff.GasLimit)
@@ -168,7 +168,7 @@ func (diff *BlockOverrides) Apply(blockCtx *vm.BlockContext) {
 	if diff.BaseFee != nil {
 		blockCtx.BaseFee = diff.BaseFee.ToInt()
 	}
-	// if diff.BlobBaseFee != nil {
-	// 	blockCtx.BlobBaseFee = diff.BlobBaseFee.ToInt()
-	// }
+	if diff.BlobBaseFee != nil {
+		blockCtx.BlobBaseFee = diff.BlobBaseFee.ToInt()
+	}
 }

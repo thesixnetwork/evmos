@@ -4,11 +4,10 @@ package statedb
 
 import (
 	"bytes"
+	"fmt"
 	"math/big"
 	"sort"
 
-	storetypes "cosmossdk.io/store/types"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 )
@@ -28,6 +27,7 @@ func NewEmptyAccount() *Account {
 	return &Account{
 		Balance:  new(big.Int),
 		CodeHash: emptyCodeHash,
+		Nonce: uint64(0),
 	}
 }
 
@@ -38,6 +38,21 @@ func (acct Account) IsContract() bool {
 
 // Storage represents in-memory cache/buffer of contract storage.
 type Storage map[common.Hash]common.Hash
+
+func (s Storage) String() (str string) {
+	for key, value := range s {
+		str += fmt.Sprintf("%X : %X\n", key, value)
+	}
+	return
+}
+
+func (s Storage) Copy() Storage {
+	cpy := make(Storage, len(s))
+	for key, value := range s {
+		cpy[key] = value
+	}
+	return cpy
+}
 
 // SortedKeys sort the keys for deterministic iteration
 func (s Storage) SortedKeys() []common.Hash {
@@ -51,7 +66,7 @@ func (s Storage) SortedKeys() []common.Hash {
 	return keys
 }
 
-// stateObject is the state of an account
+// stateObject is the state of an acount
 type stateObject struct {
 	db *StateDB
 
@@ -63,11 +78,26 @@ type stateObject struct {
 	dirtyStorage  Storage
 	fakeStorage   Storage // Fake storage which constructed by caller for debugging purpose.
 
+	// transientStorage is an in memory storage of the latest committed entries in the current transaction execution.
+	// It is only used when multiple commits are made within the same transaction execution.
+	transientStorage Storage
+
 	address common.Address
 
-	// flags
-	dirtyCode bool
-	suicided  bool
+	// Cache flags.
+	dirtyCode bool // true if the code was updated
+
+	// Flag whether the account was marked as self-destructed. The self-destructed account
+	// is still accessible in the scope of same transaction.
+	selfDestructed bool
+
+	// Flag whether the account was marked as deleted. A self-destructed account
+	// or an account that is considered as empty will be marked as deleted at
+	// the end of transaction and no longer accessible anymore.
+	deleted bool
+
+	// Flag whether the object was created in the current transaction
+	created bool
 }
 
 // newObject creates a state object.
@@ -79,11 +109,12 @@ func newObject(db *StateDB, address common.Address, account Account) *stateObjec
 		account.CodeHash = emptyCodeHash
 	}
 	return &stateObject{
-		db:            db,
-		address:       address,
-		account:       account,
-		originStorage: make(Storage),
-		dirtyStorage:  make(Storage),
+		db:               db,
+		address:          address,
+		account:          account,
+		originStorage:    make(Storage),
+		dirtyStorage:     make(Storage),
+		transientStorage: make(Storage),
 	}
 }
 
@@ -92,8 +123,8 @@ func (s *stateObject) empty() bool {
 	return s.account.Nonce == 0 && s.account.Balance.Sign() == 0 && bytes.Equal(s.account.CodeHash, emptyCodeHash)
 }
 
-func (s *stateObject) markSuicided() {
-	s.suicided = true
+func (s *stateObject) markSelfdestructed() {
+	s.selfDestructed = true
 }
 
 // AddBalance adds amount to s's balance.
@@ -121,35 +152,6 @@ func (s *stateObject) SetBalance(amount *big.Int) {
 		prev:    new(big.Int).Set(s.account.Balance),
 	})
 	s.setBalance(amount)
-}
-
-
-// SetStorage replaces the entire state storage with the given one.
-//
-// After this function is called, all original state will be ignored and state
-// lookup only happens in the fake state storage.
-//
-// Note this function should only be used for debugging purpose.
-func (s *stateObject) SetStorage(storage map[common.Hash]common.Hash) {
-	// Allocate fake storage if it's nil.
-	if s.fakeStorage == nil {
-		s.fakeStorage = make(Storage)
-	}
-	for key, value := range storage {
-		s.fakeStorage[key] = value
-	}
-	// Don't bother journal since this function should only be used for
-	// debugging and the `fake` storage won't be committed to database.
-}
-
-// AddPrecompileFn appends to the journal an entry
-// with a snapshot of the multi-store and events
-// previous to the precompile call
-func (s *stateObject) AddPrecompileFn(cms storetypes.CacheMultiStore, events sdk.Events) {
-	s.db.journal.append(precompileCallChange{
-		multiStore: cms,
-		events:     events,
-	})
 }
 
 func (s *stateObject) setBalance(amount *big.Int) {
@@ -266,4 +268,22 @@ func (s *stateObject) SetState(key common.Hash, value common.Hash) {
 
 func (s *stateObject) setState(key, value common.Hash) {
 	s.dirtyStorage[key] = value
+}
+
+// SetStorage replaces the entire state storage with the given one.
+//
+// After this function is called, all original state will be ignored and state
+// lookup only happens in the fake state storage.
+//
+// Note this function should only be used for debugging purpose.
+func (s *stateObject) SetStorage(storage map[common.Hash]common.Hash) {
+	// Allocate fake storage if it's nil.
+	if s.fakeStorage == nil {
+		s.fakeStorage = make(Storage)
+	}
+	for key, value := range storage {
+		s.fakeStorage[key] = value
+	}
+	// Don't bother journal since this function should only be used for
+	// debugging and the `fake` storage won't be committed to database.
 }

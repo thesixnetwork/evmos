@@ -25,7 +25,7 @@ type Keeper interface {
 	GetState(ctx sdk.Context, addr common.Address, key common.Hash) common.Hash
 	GetCode(ctx sdk.Context, codeHash common.Hash) []byte
 	// the callback returns false to break early
-	ForEachStorage(ctx sdk.Context, addr common.Address, cb func(key, value common.Hash) bool)
+	// ForEachStorage(ctx sdk.Context, addr common.Address, cb func(key, value common.Hash) bool)
 
 	// Write methods, only called by `StateDB.Commit()`
 	SetAccount(ctx sdk.Context, addr common.Address, account Account) error

@@ -8,17 +8,19 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/evmos/evmos/v20/x/evm/core/vm"
 	"github.com/evmos/evmos/v20/x/evm/statedb"
 	"github.com/stretchr/testify/suite"
 )
 
 var (
-	address       common.Address   = common.BigToAddress(big.NewInt(101))
-	address2      common.Address   = common.BigToAddress(big.NewInt(102))
-	address3      common.Address   = common.BigToAddress(big.NewInt(103))
-	blockHash     common.Hash      = common.BigToHash(big.NewInt(9999))
-	emptyTxConfig statedb.TxConfig = statedb.NewEmptyTxConfig(blockHash)
+	address       common.Address      = common.BigToAddress(big.NewInt(101))
+	address2      common.Address      = common.BigToAddress(big.NewInt(102))
+	address3      common.Address      = common.BigToAddress(big.NewInt(103))
+	accessList    ethtypes.AccessList = []ethtypes.AccessTuple{}
+	blockHash     common.Hash         = common.BigToHash(big.NewInt(9999))
+	emptyTxConfig statedb.TxConfig    = statedb.NewEmptyTxConfig(blockHash)
 )
 
 type StateDBTestSuite struct {
@@ -62,8 +64,7 @@ func (suite *StateDBTestSuite) TestAccount() {
 		}},
 		{"suicide", func(db *statedb.StateDB) {
 			// non-exist account.
-			suite.Require().False(db.Suicide(address))
-			suite.Require().False(db.HasSuicided(address))
+			suite.Require().False(db.HasSelfDestructed(address))
 
 			// create a contract account
 			db.CreateAccount(address)
@@ -75,11 +76,8 @@ func (suite *StateDBTestSuite) TestAccount() {
 
 			// suicide
 			db = statedb.New(sdk.Context{}, db.Keeper(), emptyTxConfig)
-			suite.Require().False(db.HasSuicided(address))
-			suite.Require().True(db.Suicide(address))
+			suite.Require().True(db.HasSelfDestructed(address))
 
-			// check dirty state
-			suite.Require().True(db.HasSuicided(address))
 			// balance is cleared
 			suite.Require().Equal(big.NewInt(0), db.GetBalance(address))
 			// but code and state are still accessible in dirty state
@@ -136,7 +134,7 @@ func (suite *StateDBTestSuite) TestDBError() {
 		}},
 		{"delete account", func(db vm.StateDB) {
 			db.SetNonce(errAddress, 1)
-			suite.Require().True(db.Suicide(errAddress))
+			suite.Require().True(db.HasSelfDestructed(errAddress))
 		}},
 	}
 	for _, tc := range testCases {
@@ -314,7 +312,7 @@ func (suite *StateDBTestSuite) TestRevertSnapshot() {
 		{"suicide", func(db vm.StateDB) {
 			db.SetState(address, v1, v2)
 			db.SetCode(address, []byte("hello world"))
-			suite.Require().True(db.Suicide(address))
+			suite.Require().True(db.HasSelfDestructed(address))
 		}},
 		{"add log", func(db vm.StateDB) {
 			db.AddLog(&ethtypes.Log{
@@ -442,7 +440,7 @@ func (suite *StateDBTestSuite) TestAccessList() {
 				StorageKeys: []common.Hash{value1},
 			}}
 
-			db.PrepareAccessList(address, &address2, vm.PrecompiledAddressesBerlin, al)
+			db.Prepare(params.Rules{}, address, address2, &address3, vm.PrecompiledAddressesBerlin, al)
 
 			// check sender and dst
 			suite.Require().True(db.AddressInAccessList(address))

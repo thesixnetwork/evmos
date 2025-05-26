@@ -51,6 +51,27 @@ func (b *Backend) BlockNumber() (hexutil.Uint64, error) {
 	return hexutil.Uint64(height), nil
 }
 
+func (b *Backend) BlockNumberUin64() (int64, error) {
+	// do any grpc query, ignore the response and use the returned block height
+	var header metadata.MD
+	_, err := b.queryClient.Params(b.ctx, &evmtypes.QueryParamsRequest{}, grpc.Header(&header))
+	if err != nil {
+		return int64(0), err
+	}
+
+	blockHeightHeader := header.Get(grpctypes.GRPCBlockHeightHeader)
+	if headerLen := len(blockHeightHeader); headerLen != 1 {
+		return 0, fmt.Errorf("unexpected '%s' gRPC header length; got %d, expected: %d", grpctypes.GRPCBlockHeightHeader, headerLen, 1)
+	}
+
+	height, err := strconv.ParseUint(blockHeightHeader[0], 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse block height: %w", err)
+	}
+
+	return int64(height), nil
+}
+
 // GetBlockByNumber returns the JSON-RPC compatible Ethereum block identified by
 // block number. Depending on fullTx it either returns the full transaction
 // objects or if false only the hashes of the transactions.
@@ -78,6 +99,19 @@ func (b *Backend) GetBlockByNumber(blockNum rpctypes.BlockNumber, fullTx bool) (
 	}
 
 	return res, nil
+}
+
+func (b *Backend) BlockTime() (uint64, error) {
+	bn, err := b.BlockNumberUin64()
+	if err != nil {
+		return uint64(0), err
+	}
+	tmbn := rpctypes.NewBlockNumber(big.NewInt(bn))
+	resBlock, err := b.TendermintBlockByNumber(tmbn)
+	if err != nil {
+		return uint64(0), err
+	}
+	return uint64(resBlock.Block.Time.Unix()), nil
 }
 
 // GetBlockByHash returns the JSON-RPC compatible Ethereum block identified by
