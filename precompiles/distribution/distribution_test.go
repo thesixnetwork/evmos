@@ -247,7 +247,7 @@ func (s *PrecompileTestSuite) TestRun() {
 
 			ethChainID := s.network.GetEIP155ChainID()
 			signer := gethtypes.LatestSignerForChainID(ethChainID)
-			msg, err := signedMsg.AsMessage(signer, baseFee)
+			msg, err := signedMsg.AsMessage(signedMsg.AsTransaction(),signer, baseFee)
 			s.Require().NoError(err, "failed to instantiate Ethereum message")
 
 			// Instantiate EVM

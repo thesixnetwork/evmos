@@ -136,6 +136,7 @@ func newEthMsgTx(
 func newNativeMessage(
 	nonce uint64,
 	blockHeight int64,
+	blockTime uint64,
 	address common.Address,
 	cfg *params.ChainConfig,
 	krSigner keyring.Signer,
@@ -144,16 +145,16 @@ func newNativeMessage(
 	data []byte,
 	accessList ethtypes.AccessList,
 ) (core.Message, error) {
-	msgSigner := ethtypes.MakeSigner(cfg, big.NewInt(blockHeight))
+	msgSigner := ethtypes.MakeSigner(cfg, big.NewInt(blockHeight), blockTime)
 
 	msg, baseFee, err := newEthMsgTx(nonce, address, krSigner, ethSigner, txType, data, accessList)
 	if err != nil {
-		return nil, err
+		return core.Message{}, err
 	}
 
-	m, err := msg.AsMessage(msgSigner, baseFee)
+	m, err := msg.AsMessage(msg.AsTransaction(), msgSigner, baseFee)
 	if err != nil {
-		return nil, err
+		return core.Message{}, err
 	}
 
 	return m, nil
@@ -264,6 +265,7 @@ func BenchmarkApplyMessage(b *testing.B) {
 		m, err := newNativeMessage(
 			suite.network.App.EvmKeeper.GetNonce(suite.network.GetContext(), addr),
 			suite.network.GetContext().BlockHeight(),
+			uint64(suite.network.GetContext().BlockTime().Unix()),
 			addr,
 			ethCfg,
 			krSigner,
@@ -301,6 +303,7 @@ func BenchmarkApplyMessageWithLegacyTx(b *testing.B) {
 		m, err := newNativeMessage(
 			suite.network.App.EvmKeeper.GetNonce(suite.network.GetContext(), addr),
 			suite.network.GetContext().BlockHeight(),
+			uint64(suite.network.GetContext().BlockTime().Unix()),
 			addr,
 			ethCfg,
 			krSigner,
@@ -337,6 +340,7 @@ func BenchmarkApplyMessageWithDynamicFeeTx(b *testing.B) {
 		m, err := newNativeMessage(
 			suite.network.App.EvmKeeper.GetNonce(suite.network.GetContext(), addr),
 			suite.network.GetContext().BlockHeight(),
+			uint64(suite.network.GetContext().BlockTime().Unix()),
 			addr,
 			ethCfg,
 			krSigner,

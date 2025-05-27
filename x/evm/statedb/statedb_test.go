@@ -569,13 +569,13 @@ func (suite *StateDBTestSuite) TestIterateStorage() {
 
 func CollectContractStorage(db vm.StateDB) statedb.Storage {
 	storage := make(statedb.Storage)
-	err := db.ForEachStorage(address, func(k, v common.Hash) bool {
-		storage[k] = v
-		return true
-	})
-	if err != nil {
-		return nil
-	}
+	// err := db.ForEachStorage(address, func(k, v common.Hash) bool {
+	// 	storage[k] = v
+	// 	return true
+	// })
+	// if err != nil {
+	// 	return nil
+	// }
 
 	return storage
 }

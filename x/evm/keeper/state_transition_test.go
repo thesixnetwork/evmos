@@ -273,6 +273,7 @@ func (suite *KeeperTestSuite) TestGetEthIntrinsicGas() {
 			m, err := newNativeMessage(
 				nonce,
 				ctx.BlockHeight(),
+				uint64(ctx.BlockTime().Unix()),
 				addr,
 				ethCfg,
 				krSigner,
@@ -448,7 +449,7 @@ func (suite *KeeperTestSuite) TestRefundGas() {
 				},
 			)
 			suite.Require().NoError(err)
-			transactionGas := coreMsg.Gas()
+			transactionGas := coreMsg.GasLimit
 
 			vmdb := unitNetwork.GetStateDB()
 			vmdb.AddRefund(params.TxGas)
