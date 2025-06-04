@@ -10,8 +10,8 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/evmos/evmos/v20/x/evm/core/logger"
 	"github.com/evmos/evmos/v20/x/evm/core/tracers"
+	"github.com/evmos/evmos/v20/x/evm/core/tracers/logger"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

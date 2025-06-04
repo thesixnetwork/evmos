@@ -15,7 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	ethparams "github.com/ethereum/go-ethereum/params"
-	ethlogger "github.com/evmos/evmos/v20/x/evm/core/logger"
+	ethlogger "github.com/evmos/evmos/v20/x/evm/core/tracers/logger"
 	"github.com/evmos/evmos/v20/x/evm/core/vm"
 
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"

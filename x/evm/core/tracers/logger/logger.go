@@ -1,3 +1,19 @@
+// Copyright 2021 The go-ethereum Authors
+// This file is part of the go-ethereum library.
+//
+// The go-ethereum library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// The go-ethereum library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+
 package logger
 
 import (
@@ -8,14 +24,13 @@ import (
 	"math/big"
 	"strings"
 	"sync/atomic"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/evmos/evmos/v20/x/evm/core/vm"
 	"github.com/holiman/uint256"
 )
 
@@ -101,8 +116,8 @@ type StructLogger struct {
 	gasLimit uint64
 	usedGas  uint64
 
-	interrupt uint32 // Atomic flag to signal execution interruption
-	reason    error  // Textual reason for the interruption
+	interrupt atomic.Bool // Atomic flag to signal execution interruption
+	reason    error       // Textual reason for the interruption
 }
 
 // NewStructLogger returns a new logger
@@ -134,8 +149,7 @@ func (l *StructLogger) CaptureStart(env *vm.EVM, from common.Address, to common.
 // CaptureState also tracks SLOAD/SSTORE ops to track storage change.
 func (l *StructLogger) CaptureState(pc uint64, op vm.OpCode, gas, cost uint64, scope *vm.ScopeContext, rData []byte, depth int, err error) {
 	// If tracing was interrupted, set the error and stop
-	if atomic.LoadUint32(&l.interrupt) > 0 {
-		l.env.Cancel()
+	if l.interrupt.Load() {
 		return
 	}
 	// check if already accumulated the specified number of logs
@@ -155,12 +169,12 @@ func (l *StructLogger) CaptureState(pc uint64, op vm.OpCode, gas, cost uint64, s
 	// Copy a snapshot of the current stack state to a new buffer
 	var stck []uint256.Int
 	if !l.cfg.DisableStack {
-		stck = make([]uint256.Int, len(stack.Data))
-		for i, item := range stack.Data {
+		stck = make([]uint256.Int, len(stack.Data()))
+		for i, item := range stack.Data() {
 			stck[i] = item
 		}
 	}
-	stackData := stack.Data
+	stackData := stack.Data()
 	stackLen := len(stackData)
 	// Copy a snapshot of the current storage to a new container
 	var storage Storage
@@ -204,7 +218,7 @@ func (l *StructLogger) CaptureFault(pc uint64, op vm.OpCode, gas, cost uint64, s
 }
 
 // CaptureEnd is called after the call finishes to finalize the tracing.
-func (l *StructLogger) CaptureEnd(output []byte, gasUsed uint64, t time.Duration, err error) {
+func (l *StructLogger) CaptureEnd(output []byte, gasUsed uint64, err error) {
 	l.output = output
 	l.err = err
 	if l.cfg.Debug {
@@ -244,7 +258,7 @@ func (l *StructLogger) GetResult() (json.RawMessage, error) {
 // Stop terminates execution of the tracer at the first opportune moment.
 func (l *StructLogger) Stop(err error) {
 	l.reason = err
-	atomic.StoreUint32(&l.interrupt, 1)
+	l.interrupt.Store(true)
 }
 
 func (l *StructLogger) CaptureTxStart(gasLimit uint64) {
@@ -353,7 +367,7 @@ func (t *mdLogger) CaptureState(pc uint64, op vm.OpCode, gas, cost uint64, scope
 	if !t.cfg.DisableStack {
 		// format stack
 		var a []string
-		for _, elem := range stack.Data {
+		for _, elem := range stack.Data() {
 			a = append(a, elem.Hex())
 		}
 		b := fmt.Sprintf("[%v]", strings.Join(a, ","))
@@ -370,7 +384,7 @@ func (t *mdLogger) CaptureFault(pc uint64, op vm.OpCode, gas, cost uint64, scope
 	fmt.Fprintf(t.out, "\nError: at pc=%d, op=%v: %v\n", pc, op, err)
 }
 
-func (t *mdLogger) CaptureEnd(output []byte, gasUsed uint64, tm time.Duration, err error) {
+func (t *mdLogger) CaptureEnd(output []byte, gasUsed uint64, err error) {
 	fmt.Fprintf(t.out, "\nOutput: `%#x`\nConsumed gas: `%d`\nError: `%v`\n",
 		output, gasUsed, err)
 }
@@ -404,6 +418,7 @@ type StructLogRes struct {
 	Depth         int                `json:"depth"`
 	Error         string             `json:"error,omitempty"`
 	Stack         *[]string          `json:"stack,omitempty"`
+	ReturnData    string             `json:"returnData,omitempty"`
 	Memory        *[]string          `json:"memory,omitempty"`
 	Storage       *map[string]string `json:"storage,omitempty"`
 	RefundCounter uint64             `json:"refund,omitempty"`
@@ -428,6 +443,9 @@ func formatLogs(logs []StructLog) []StructLogRes {
 				stack[i] = stackValue.Hex()
 			}
 			formatted[index].Stack = &stack
+		}
+		if trace.ReturnData != nil && len(trace.ReturnData) > 0 {
+			formatted[index].ReturnData = hexutil.Bytes(trace.ReturnData).String()
 		}
 		if trace.Memory != nil {
 			memory := make([]string, 0, (len(trace.Memory)+31)/32)
