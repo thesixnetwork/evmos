@@ -884,6 +884,8 @@ func (suite *KeeperTestSuite) TestEstimateGas() {
 					suite.network.GetContext(),
 				)
 				evmParams.NoBaseFee = true
+
+				suite.Require().Equal(evmParams.NoBaseFee, true)
 			}
 
 			err := suite.network.App.FeeMarketKeeper.SetParams(
