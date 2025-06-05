@@ -507,7 +507,7 @@ func (suite *KeeperTestSuite) TestExist() {
 	}{
 		{"success, account exists", suite.keyring.GetAddr(0), func(vm.StateDB) {}, true},
 		{"success, has suicided", suite.keyring.GetAddr(0), func(vmdb vm.StateDB) {
-			vmdb.Suicide(suite.keyring.GetAddr(0))
+			vmdb.HasSelfDestructed(suite.keyring.GetAddr(0))
 		}, true},
 		{"success, account doesn't exist", utiltx.GenerateAddress(), func(vm.StateDB) {}, false},
 	}
