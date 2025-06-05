@@ -5,6 +5,7 @@ package staking
 
 import (
 	"embed"
+	"math/big"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/evmos/evmos/v20/precompiles/authorization"
 	cmn "github.com/evmos/evmos/v20/precompiles/common"
 	"github.com/evmos/evmos/v20/x/evm/core/vm"
+	"github.com/evmos/evmos/v20/x/evm/statedb"
 	evmtypes "github.com/evmos/evmos/v20/x/evm/types"
 	stakingkeeper "github.com/evmos/evmos/v20/x/staking/keeper"
 )
@@ -81,19 +83,25 @@ func (p Precompile) RequiredGas(input []byte) uint64 {
 		return 0
 	}
 
-	return p.Precompile.RequiredGas(input, p.IsTransaction(method.Name))
+	return cmn.DefaultGasCost(input, p.IsTransaction(method.Name))
 }
 
 // Run executes the precompiled contract staking methods defined in the ABI.
-func (p Precompile) Run(evm *vm.EVM, contract *vm.Contract, readOnly bool) (bz []byte, err error) {
-	ctx, stateDB, snapshot, method, initialGas, args, err := p.RunSetup(evm, contract, readOnly, p.IsTransaction)
+func (p Precompile) Run(evm *vm.EVM, caller common.Address, callingContract common.Address, input []byte, value *big.Int, readOnly bool) (bz []byte, err error) {
+	ctx, method, args, err := p.Prepare(evm, input, value, readOnly)
 	if err != nil {
 		return nil, err
 	}
 
+	stateDB, ok := evm.StateDB.(*statedb.StateDB)
+	if !ok {
+		return nil, vm.ErrOutOfGas
+	}
+
+	initialGas := ctx.GasMeter().GasConsumed()
 	// This handles any out of gas errors that may occur during the execution of a precompile tx or query.
 	// It avoids panics and returns the out of gas error so the EVM can continue gracefully.
-	defer cmn.HandleGasError(ctx, contract, initialGas, &err)()
+	defer cmn.HandleGasError(ctx, p.RequiredGas(input), initialGas, &err)()
 
 	switch method.Name {
 	// Authorization transactions
@@ -107,46 +115,40 @@ func (p Precompile) Run(evm *vm.EVM, contract *vm.Contract, readOnly bool) (bz [
 		bz, err = p.DecreaseAllowance(ctx, evm.Origin, stateDB, method, args)
 	// Staking transactions
 	case CreateValidatorMethod:
-		bz, err = p.CreateValidator(ctx, evm.Origin, contract, stateDB, method, args)
+		bz, err = p.CreateValidator(ctx, evm.Origin, caller, stateDB, method, args)
 	case EditValidatorMethod:
-		bz, err = p.EditValidator(ctx, evm.Origin, contract, stateDB, method, args)
+		bz, err = p.EditValidator(ctx, evm.Origin, caller, stateDB, method, args)
 	case DelegateMethod:
-		bz, err = p.Delegate(ctx, evm.Origin, contract, stateDB, method, args)
+		bz, err = p.Delegate(ctx, evm.Origin, caller, stateDB, method, args)
 	case UndelegateMethod:
-		bz, err = p.Undelegate(ctx, evm.Origin, contract, stateDB, method, args)
+		bz, err = p.Undelegate(ctx, evm.Origin, caller, stateDB, method, args)
 	case RedelegateMethod:
-		bz, err = p.Redelegate(ctx, evm.Origin, contract, stateDB, method, args)
+		bz, err = p.Redelegate(ctx, evm.Origin, caller, stateDB, method, args)
 	case CancelUnbondingDelegationMethod:
-		bz, err = p.CancelUnbondingDelegation(ctx, evm.Origin, contract, stateDB, method, args)
+		bz, err = p.CancelUnbondingDelegation(ctx, evm.Origin, caller, stateDB, method, args)
 	// Staking queries
 	case DelegationMethod:
-		bz, err = p.Delegation(ctx, contract, method, args)
+		bz, err = p.Delegation(ctx, caller, method, args)
 	case UnbondingDelegationMethod:
-		bz, err = p.UnbondingDelegation(ctx, contract, method, args)
+		bz, err = p.UnbondingDelegation(ctx, caller, method, args)
 	case ValidatorMethod:
-		bz, err = p.Validator(ctx, method, contract, args)
+		bz, err = p.Validator(ctx, method, caller, args)
 	case ValidatorsMethod:
-		bz, err = p.Validators(ctx, method, contract, args)
+		bz, err = p.Validators(ctx, method, caller, args)
 	case RedelegationMethod:
-		bz, err = p.Redelegation(ctx, method, contract, args)
+		bz, err = p.Redelegation(ctx, method, caller, args)
 	case RedelegationsMethod:
-		bz, err = p.Redelegations(ctx, method, contract, args)
+		bz, err = p.Redelegations(ctx, method, caller, args)
 	// Authorization queries
 	case authorization.AllowanceMethod:
-		bz, err = p.Allowance(ctx, method, contract, args)
+		bz, err = p.Allowance(ctx, method, caller, args)
 	}
 
 	if err != nil {
 		return nil, err
 	}
 
-	cost := ctx.GasMeter().GasConsumed() - initialGas
-
-	if !contract.UseGas(cost) {
-		return nil, vm.ErrOutOfGas
-	}
-
-	if err := p.AddJournalEntries(stateDB, snapshot); err != nil {
+	if err := p.AddJournalEntries(stateDB, ctx); err != nil {
 		return nil, err
 	}
 

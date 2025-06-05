@@ -7,7 +7,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	govkeeper "github.com/cosmos/cosmos-sdk/x/gov/keeper"
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/evmos/evmos/v20/x/evm/core/vm"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 const (
@@ -27,7 +27,7 @@ const (
 func (p *Precompile) GetVotes(
 	ctx sdk.Context,
 	method *abi.Method,
-	_ *vm.Contract,
+	_ common.Address,
 	args []interface{},
 ) ([]byte, error) {
 	queryVotesReq, err := ParseVotesArgs(method, args)
@@ -49,7 +49,7 @@ func (p *Precompile) GetVotes(
 func (p *Precompile) GetVote(
 	ctx sdk.Context,
 	method *abi.Method,
-	_ *vm.Contract,
+	_ common.Address,
 	args []interface{},
 ) ([]byte, error) {
 	queryVotesReq, err := ParseVoteArgs(args)
@@ -72,7 +72,7 @@ func (p *Precompile) GetVote(
 func (p *Precompile) GetDeposit(
 	ctx sdk.Context,
 	method *abi.Method,
-	_ *vm.Contract,
+	_ common.Address,
 	args []interface{},
 ) ([]byte, error) {
 	queryDepositReq, err := ParseDepositArgs(args)
@@ -94,7 +94,7 @@ func (p *Precompile) GetDeposit(
 func (p *Precompile) GetDeposits(
 	ctx sdk.Context,
 	method *abi.Method,
-	_ *vm.Contract,
+	_ common.Address,
 	args []interface{},
 ) ([]byte, error) {
 	queryDepositsReq, err := ParseDepositsArgs(method, args)
@@ -116,7 +116,7 @@ func (p *Precompile) GetDeposits(
 func (p *Precompile) GetTallyResult(
 	ctx sdk.Context,
 	method *abi.Method,
-	_ *vm.Contract,
+	_ common.Address,
 	args []interface{},
 ) ([]byte, error) {
 	queryTallyResultReq, err := ParseTallyResultArgs(args)

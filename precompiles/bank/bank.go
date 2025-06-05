@@ -6,6 +6,7 @@ package bank
 import (
 	"embed"
 	"fmt"
+	"math/big"
 
 	storetypes "cosmossdk.io/store/types"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
@@ -13,6 +14,7 @@ import (
 	cmn "github.com/evmos/evmos/v20/precompiles/common"
 	erc20keeper "github.com/evmos/evmos/v20/x/erc20/keeper"
 	"github.com/evmos/evmos/v20/x/evm/core/vm"
+	"github.com/evmos/evmos/v20/x/evm/statedb"
 	evmtypes "github.com/evmos/evmos/v20/x/evm/types"
 )
 
@@ -96,28 +98,34 @@ func (p Precompile) RequiredGas(input []byte) uint64 {
 		return GasSupplyOf
 	}
 
-	return 0
+	return cmn.DefaultGasCost(input, p.IsTransaction(method.Name))
 }
 
 // Run executes the precompiled contract bank query methods defined in the ABI.
-func (p Precompile) Run(evm *vm.EVM, contract *vm.Contract, readOnly bool) (bz []byte, err error) {
-	ctx, stateDB, snapshot, method, initialGas, args, err := p.RunSetup(evm, contract, readOnly, p.IsTransaction)
+func (p Precompile) Run(evm *vm.EVM, caller common.Address, callingContract common.Address, input []byte, value *big.Int, readOnly bool) (bz []byte, err error) {
+	ctx, method, args, err := p.Prepare(evm, input, value, readOnly)
 	if err != nil {
 		return nil, err
 	}
 
+	stateDB, ok := evm.StateDB.(*statedb.StateDB)
+	if !ok {
+		return nil, vm.ErrOutOfGas
+	}
+
+	initialGas := ctx.GasMeter().GasConsumed()
 	// This handles any out of gas errors that may occur during the execution of a precompile query.
 	// It avoids panics and returns the out of gas error so the EVM can continue gracefully.
-	defer cmn.HandleGasError(ctx, contract, initialGas, &err)()
+	defer cmn.HandleGasError(ctx, p.RequiredGas(input), initialGas, &err)()
 
 	switch method.Name {
 	// Bank queries
 	case BalancesMethod:
-		bz, err = p.Balances(ctx, contract, method, args)
+		bz, err = p.Balances(ctx, caller, method, args, value, readOnly)
 	case TotalSupplyMethod:
-		bz, err = p.TotalSupply(ctx, contract, method, args)
+		bz, err = p.TotalSupply(ctx, caller, method, args, value, readOnly)
 	case SupplyOfMethod:
-		bz, err = p.SupplyOf(ctx, contract, method, args)
+		bz, err = p.SupplyOf(ctx, caller, method, args, value, readOnly)
 	default:
 		return nil, fmt.Errorf(cmn.ErrUnknownMethod, method.Name)
 	}
@@ -126,13 +134,13 @@ func (p Precompile) Run(evm *vm.EVM, contract *vm.Contract, readOnly bool) (bz [
 		return nil, err
 	}
 
-	cost := ctx.GasMeter().GasConsumed() - initialGas
+	// cost := ctx.GasMeter().GasConsumed() - initialGas
 
-	if !contract.UseGas(cost) {
-		return nil, vm.ErrOutOfGas
-	}
+	// if !contract.UseGas(cost) {
+	// 	return nil, vm.ErrOutOfGas
+	// }
 
-	if err := p.AddJournalEntries(stateDB, snapshot); err != nil {
+	if err := p.AddJournalEntries(stateDB, ctx); err != nil {
 		return nil, err
 	}
 

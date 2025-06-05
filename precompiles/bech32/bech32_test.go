@@ -51,7 +51,7 @@ func (s *PrecompileTestSuite) TestNewPrecompile() {
 
 // TestRun tests the precompile's Run method.
 func (s *PrecompileTestSuite) TestRun() {
-	contract := vm.NewPrecompile(
+	contract := vm.NewContract(
 		vm.AccountRef(s.keyring.GetAddr(0)),
 		s.precompile,
 		big.NewInt(0),
@@ -260,7 +260,7 @@ func (s *PrecompileTestSuite) TestRun() {
 
 			// NOTE: we can ignore the EVM and readonly args since it's a stateless
 			// precompiled contract
-			bz, err := s.precompile.Run(nil, contract, true)
+			bz, err := s.precompile.Run(nil, contract.CallerAddress, contract.Address(), contract.Input, contract.Value(), true)
 
 			// Check results
 			if tc.expPass {

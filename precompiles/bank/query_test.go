@@ -110,9 +110,11 @@ func (s *PrecompileTestSuite) TestBalances() {
 
 			bz, err := s.precompile.Balances(
 				ctx,
-				nil,
+				common.Address{},
 				&method,
 				tc.malleate(),
+				nil,
+				true,
 			)
 
 			if tc.expPass {
@@ -169,9 +171,11 @@ func (s *PrecompileTestSuite) TestTotalSupply() {
 			tc.malleate()
 			bz, err := s.precompile.TotalSupply(
 				ctx,
-				nil,
+				common.Address{},
 				&method,
 				nil,
+				nil,
+				true,
 			)
 
 			s.Require().NoError(err)
@@ -266,9 +270,11 @@ func (s *PrecompileTestSuite) TestSupplyOf() {
 
 			bz, err := s.precompile.SupplyOf(
 				ctx,
-				nil,
+				common.Address{},
 				&method,
 				tc.malleate(),
+				nil,
+				true,
 			)
 
 			if tc.expErr {

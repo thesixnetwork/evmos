@@ -34,25 +34,25 @@ var SendMsgURL = sdk.MsgTypeURL(&banktypes.MsgSend{})
 // destination address.
 func (p *Precompile) Transfer(
 	ctx sdk.Context,
-	contract *vm.Contract,
+	caller common.Address,
 	stateDB vm.StateDB,
 	method *abi.Method,
 	args []interface{},
 ) ([]byte, error) {
-	from := contract.CallerAddress
+	from := caller
 	to, amount, err := ParseTransferArgs(args)
 	if err != nil {
 		return nil, err
 	}
 
-	return p.transfer(ctx, contract, stateDB, method, from, to, amount)
+	return p.transfer(ctx, caller, stateDB, method, from, to, amount)
 }
 
 // TransferFrom executes a transfer on behalf of the specified from address in
 // the call data to the destination address.
 func (p *Precompile) TransferFrom(
 	ctx sdk.Context,
-	contract *vm.Contract,
+	caller common.Address,
 	stateDB vm.StateDB,
 	method *abi.Method,
 	args []interface{},
@@ -62,7 +62,7 @@ func (p *Precompile) TransferFrom(
 		return nil, err
 	}
 
-	return p.transfer(ctx, contract, stateDB, method, from, to, amount)
+	return p.transfer(ctx, caller, stateDB, method, from, to, amount)
 }
 
 // transfer is a common function that handles transfers for the ERC-20 Transfer
@@ -70,7 +70,7 @@ func (p *Precompile) TransferFrom(
 // the sender of the transfer, otherwise it executes an authorization.
 func (p *Precompile) transfer(
 	ctx sdk.Context,
-	contract *vm.Contract,
+	caller common.Address,
 	stateDB vm.StateDB,
 	method *abi.Method,
 	from, to common.Address,
@@ -86,7 +86,7 @@ func (p *Precompile) transfer(
 
 	isTransferFrom := method.Name == TransferFromMethod
 	owner := sdk.AccAddress(from.Bytes())
-	spenderAddr := contract.CallerAddress
+	spenderAddr := caller
 	spender := sdk.AccAddress(spenderAddr.Bytes()) // aka. grantee
 	ownerIsSpender := spender.Equals(owner)
 

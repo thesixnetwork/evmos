@@ -121,6 +121,15 @@ type EVM struct {
 	// available gas is calculated in gasCall* according to the 63/64 rule and later
 	// applied in opCall*.
 	callGasTemp uint64
+	// precompiles defines the precompiled contracts used by the EVM
+	precompiles map[common.Address]PrecompiledContract
+	// activePrecompiles defines the precompiles that are currently active
+	activePrecompiles []common.Address
+
+	// hooks is a set of functions that can be used to intercept and modify the
+	// behavior of the EVM when executing certain opcodes.
+	// The hooks are called before the execution of the respective opcodes.
+	hooks OpCodeHooks
 }
 
 // NewEVM returns a new EVM. The returned EVM is not thread safe and should
@@ -145,6 +154,9 @@ func NewEVM(blockCtx BlockContext, txCtx TxContext, statedb StateDB, chainConfig
 		chainConfig: chainConfig,
 		chainRules:  chainConfig.Rules(blockCtx.BlockNumber, blockCtx.Random != nil, blockCtx.Time),
 	}
+
+	// set the default precompiles
+	evm.activePrecompiles = ActivePrecompiles(evm.chainRules)
 	evm.interpreter = NewEVMInterpreter(evm)
 	return evm
 }

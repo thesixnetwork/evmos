@@ -14,6 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/evmos/evmos/v20/x/evm/core/vm"
 	"github.com/evmos/evmos/v20/x/evm/types"
 )
@@ -63,6 +64,36 @@ type StateDB struct {
 
 	// The count of calls to precompiles
 	precompileCallsCounter uint8
+}
+
+// GetTransientState implements vm.StateDB.
+func (s *StateDB) GetTransientState(addr common.Address, key common.Hash) common.Hash {
+	panic("unimplemented")
+}
+
+// HasSelfDestructed implements vm.StateDB.
+func (s *StateDB) HasSelfDestructed(common.Address) bool {
+	panic("unimplemented")
+}
+
+// Prepare implements vm.StateDB.
+func (s *StateDB) Prepare(rules params.Rules, sender common.Address, coinbase common.Address, dest *common.Address, precompiles []common.Address, txAccesses ethtypes.AccessList) {
+	panic("unimplemented")
+}
+
+// SelfDestruct implements vm.StateDB.
+func (s *StateDB) SelfDestruct(common.Address) {
+	panic("unimplemented")
+}
+
+// Selfdestruct6780 implements vm.StateDB.
+func (s *StateDB) Selfdestruct6780(common.Address) {
+	panic("unimplemented")
+}
+
+// SetTransientState implements vm.StateDB.
+func (s *StateDB) SetTransientState(addr common.Address, key common.Hash, value common.Hash) {
+	panic("unimplemented")
 }
 
 // New creates a new state from a given trie.

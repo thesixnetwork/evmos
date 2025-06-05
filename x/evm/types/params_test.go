@@ -11,7 +11,7 @@ import (
 func TestParamsValidate(t *testing.T) {
 	t.Parallel()
 
-	extraEips := []string{"ethereum_2929", "ethereum_1884", "ethereum_1344"}
+	extraEips := []int32{2929, 1884, 1344}
 	testCases := []struct {
 		name        string
 		params      Params
@@ -44,7 +44,7 @@ func TestParamsValidate(t *testing.T) {
 			name: "invalid eip",
 			params: Params{
 				EvmDenom:  DefaultEVMDenom,
-				ExtraEIPs: []string{"os_1000000"},
+				ExtraEIPs: []int32{000000},
 			},
 			errContains: "EIP os_1000000 is not activateable, valid EIPs are",
 		},
@@ -86,7 +86,7 @@ func TestParamsValidate(t *testing.T) {
 }
 
 func TestParamsEIPs(t *testing.T) {
-	extraEips := []string{"ethereum_2929", "ethereum_1884", "ethereum_1344"}
+	extraEips := []int32{2929, 1884, 1344}
 	params := NewParams("ara", false, DefaultChainConfig(), extraEips, nil, nil, DefaultAccessControl)
 	actual := params.EIPs()
 

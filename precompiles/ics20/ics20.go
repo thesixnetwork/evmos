@@ -6,6 +6,7 @@ package ics20
 import (
 	"embed"
 	"fmt"
+	"math/big"
 
 	storetypes "cosmossdk.io/store/types"
 	authzkeeper "github.com/cosmos/cosmos-sdk/x/authz/keeper"
@@ -14,6 +15,7 @@ import (
 	"github.com/evmos/evmos/v20/precompiles/authorization"
 	cmn "github.com/evmos/evmos/v20/precompiles/common"
 	"github.com/evmos/evmos/v20/x/evm/core/vm"
+	"github.com/evmos/evmos/v20/x/evm/statedb"
 	evmtypes "github.com/evmos/evmos/v20/x/evm/types"
 	transferkeeper "github.com/evmos/evmos/v20/x/ibc/transfer/keeper"
 	stakingkeeper "github.com/evmos/evmos/v20/x/staking/keeper"
@@ -83,19 +85,25 @@ func (p Precompile) RequiredGas(input []byte) uint64 {
 		return 0
 	}
 
-	return p.Precompile.RequiredGas(input, p.IsTransaction(method.Name))
+	return cmn.DefaultGasCost(input, p.IsTransaction(method.Name))
 }
 
 // Run executes the precompiled contract IBC transfer methods defined in the ABI.
-func (p Precompile) Run(evm *vm.EVM, contract *vm.Contract, readOnly bool) (bz []byte, err error) {
-	ctx, stateDB, snapshot, method, initialGas, args, err := p.RunSetup(evm, contract, readOnly, p.IsTransaction)
+func (p Precompile) Run(evm *vm.EVM, caller common.Address, callingContract common.Address, input []byte, value *big.Int, readOnly bool) (bz []byte, err error) {
+	ctx, method, args, err := p.Prepare(evm, input, value, readOnly)
 	if err != nil {
 		return nil, err
 	}
 
+	stateDB, ok := evm.StateDB.(*statedb.StateDB)
+	if !ok {
+		return nil, vm.ErrOutOfGas
+	}
+
+	initialGas := ctx.GasMeter().GasConsumed()
 	// This handles any out of gas errors that may occur during the execution of a precompile tx or query.
 	// It avoids panics and returns the out of gas error so the EVM can continue gracefully.
-	defer cmn.HandleGasError(ctx, contract, initialGas, &err)()
+	defer cmn.HandleGasError(ctx, p.RequiredGas(input), initialGas, &err)()
 
 	switch method.Name {
 	// TODO Approval transactions => need cosmos-sdk v0.46 & ibc-go v6.2.0
@@ -110,14 +118,14 @@ func (p Precompile) Run(evm *vm.EVM, contract *vm.Contract, readOnly bool) (bz [
 		bz, err = p.DecreaseAllowance(ctx, evm.Origin, stateDB, method, args)
 	// ICS20 transactions
 	case TransferMethod:
-		bz, err = p.Transfer(ctx, evm.Origin, contract, stateDB, method, args)
+		bz, err = p.Transfer(ctx, evm.Origin, caller, stateDB, method, args)
 	// ICS20 queries
 	case DenomTraceMethod:
-		bz, err = p.DenomTrace(ctx, contract, method, args)
+		bz, err = p.DenomTrace(ctx, caller, method, args)
 	case DenomTracesMethod:
-		bz, err = p.DenomTraces(ctx, contract, method, args)
+		bz, err = p.DenomTraces(ctx, caller, method, args)
 	case DenomHashMethod:
-		bz, err = p.DenomHash(ctx, contract, method, args)
+		bz, err = p.DenomHash(ctx, caller, method, args)
 	case authorization.AllowanceMethod:
 		bz, err = p.Allowance(ctx, method, args)
 	default:
@@ -128,13 +136,7 @@ func (p Precompile) Run(evm *vm.EVM, contract *vm.Contract, readOnly bool) (bz [
 		return nil, err
 	}
 
-	cost := ctx.GasMeter().GasConsumed() - initialGas
-
-	if !contract.UseGas(cost) {
-		return nil, vm.ErrOutOfGas
-	}
-
-	if err := p.AddJournalEntries(stateDB, snapshot); err != nil {
+	if err := p.AddJournalEntries(stateDB, ctx); err != nil {
 		return nil, err
 	}
 

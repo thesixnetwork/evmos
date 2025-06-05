@@ -70,7 +70,7 @@ func (p *Precompile) CreateClawbackVestingAccount(
 // FundVestingAccount funds a vesting account by creating vesting schedules
 func (p *Precompile) FundVestingAccount(
 	ctx sdk.Context,
-	contract *vm.Contract,
+	caller common.Address,
 	origin common.Address,
 	stateDB vm.StateDB,
 	method *abi.Method,
@@ -81,10 +81,10 @@ func (p *Precompile) FundVestingAccount(
 		return nil, err
 	}
 
-	isContractCaller := contract.CallerAddress != origin
+	isContractCaller := caller != origin
 
 	// funder can only be the origin or the contract.Caller
-	isContractFunder := contract.CallerAddress == funderAddr && isContractCaller
+	isContractFunder := caller == funderAddr && isContractCaller
 
 	if !isContractFunder && origin != funderAddr {
 		return nil, fmt.Errorf(ErrDifferentFromOrigin, origin, funderAddr)
@@ -105,9 +105,9 @@ func (p *Precompile) FundVestingAccount(
 	if isContractCaller && !isContractFunder {
 		// if calling from a contract and the contract is not the funder (origin == funderAddr)
 		// check that an authorization exists
-		_, _, err := authorization.CheckAuthzExists(ctx, p.AuthzKeeper, contract.CallerAddress, funderAddr, FundVestingAccountMsgURL)
+		_, _, err := authorization.CheckAuthzExists(ctx, p.AuthzKeeper, caller, funderAddr, FundVestingAccountMsgURL)
 		if err != nil {
-			return nil, fmt.Errorf(authorization.ErrAuthzDoesNotExistOrExpired, FundVestingAccountMsgURL, contract.CallerAddress)
+			return nil, fmt.Errorf(authorization.ErrAuthzDoesNotExistOrExpired, FundVestingAccountMsgURL, caller)
 		}
 	}
 
@@ -141,7 +141,7 @@ func (p *Precompile) FundVestingAccount(
 // Clawback clawbacks tokens from a clawback vesting account
 func (p *Precompile) Clawback(
 	ctx sdk.Context,
-	contract *vm.Contract,
+	caller common.Address,
 	origin common.Address,
 	stateDB vm.StateDB,
 	method *abi.Method,
@@ -152,10 +152,10 @@ func (p *Precompile) Clawback(
 		return nil, err
 	}
 
-	isContractCaller := contract.CallerAddress != origin
+	isContractCaller := caller != origin
 
 	// funder can only be the origin or the contract.Caller
-	isContractFunder := contract.CallerAddress == funderAddr && isContractCaller
+	isContractFunder := caller == funderAddr && isContractCaller
 
 	// if caller address is origin, the funder MUST match the origin
 	if !isContractFunder && origin != funderAddr {
@@ -177,9 +177,9 @@ func (p *Precompile) Clawback(
 	if isContractCaller && !isContractFunder {
 		// if calling from a contract and the contract is not the funder (origin == funderAddr)
 		// check that an authorization exists.
-		_, _, err := authorization.CheckAuthzExists(ctx, p.AuthzKeeper, contract.CallerAddress, funderAddr, ClawbackMsgURL)
+		_, _, err := authorization.CheckAuthzExists(ctx, p.AuthzKeeper, caller, funderAddr, ClawbackMsgURL)
 		if err != nil {
-			return nil, fmt.Errorf(authorization.ErrAuthzDoesNotExistOrExpired, ClawbackMsgURL, contract.CallerAddress)
+			return nil, fmt.Errorf(authorization.ErrAuthzDoesNotExistOrExpired, ClawbackMsgURL, caller)
 		}
 	}
 
@@ -210,7 +210,7 @@ func (p *Precompile) Clawback(
 // UpdateVestingFunder updates the vesting funder of a clawback vesting account
 func (p *Precompile) UpdateVestingFunder(
 	ctx sdk.Context,
-	contract *vm.Contract,
+	caller common.Address,
 	origin common.Address,
 	stateDB vm.StateDB,
 	method *abi.Method,
@@ -221,8 +221,8 @@ func (p *Precompile) UpdateVestingFunder(
 		return nil, err
 	}
 
-	isContractCall := contract.CallerAddress != origin
-	isContractFunder := contract.CallerAddress == funderAddr && isContractCall
+	isContractCall := caller != origin
+	isContractFunder := caller == funderAddr && isContractCall
 	// only the funder can update the funder
 	// if caller address is origin, the funder MUST match the origin
 	if !isContractFunder && origin != funderAddr {
@@ -244,9 +244,9 @@ func (p *Precompile) UpdateVestingFunder(
 	if isContractCall && !isContractFunder {
 		// if calling from a contract and the contract is not the funder (origin == funderAddr)
 		// check that an authorization exists
-		_, _, err := authorization.CheckAuthzExists(ctx, p.AuthzKeeper, contract.CallerAddress, funderAddr, UpdateVestingFunderMsgURL)
+		_, _, err := authorization.CheckAuthzExists(ctx, p.AuthzKeeper, caller, funderAddr, UpdateVestingFunderMsgURL)
 		if err != nil {
-			return nil, fmt.Errorf(authorization.ErrAuthzDoesNotExistOrExpired, UpdateVestingFunderMsgURL, contract.CallerAddress)
+			return nil, fmt.Errorf(authorization.ErrAuthzDoesNotExistOrExpired, UpdateVestingFunderMsgURL, caller)
 		}
 	}
 

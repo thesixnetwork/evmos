@@ -68,7 +68,7 @@ func (suite *EvmAnteTestSuite) TestCanTransfer() {
 			evmParams, err := grpcHandler.GetEvmParams()
 			suite.Require().NoError(err)
 			ctx := unitNetwork.GetContext()
-			signer := gethtypes.MakeSigner(ethCfg, big.NewInt(ctx.BlockHeight()))
+			signer := gethtypes.MakeSigner(ethCfg, big.NewInt(ctx.BlockHeight()), uint64(ctx.BlockTime().Unix()))
 			txArgs, err := txFactory.GenerateDefaultTxTypeArgs(senderKey.Addr, suite.ethTxType)
 			suite.Require().NoError(err)
 			txArgs.Amount = big.NewInt(100)
@@ -79,7 +79,7 @@ func (suite *EvmAnteTestSuite) TestCanTransfer() {
 			msg.From = senderKey.Addr.String()
 			signMsg, err := txFactory.SignMsgEthereumTx(senderKey.Priv, *msg)
 			suite.Require().NoError(err)
-			coreMsg, err := signMsg.AsMessage(signer, baseFeeResp.BaseFee.BigInt())
+			coreMsg, err := signMsg.AsMessage(msg.AsTransaction(), signer, baseFeeResp.BaseFee.BigInt())
 			suite.Require().NoError(err)
 
 			// Function under test

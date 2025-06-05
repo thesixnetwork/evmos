@@ -81,7 +81,7 @@ func (s *PrecompileTestSuite) TestRun() {
 			// malleate testcase
 			caller, input := tc.malleate()
 
-			contract := vm.NewPrecompile(vm.AccountRef(caller), s.precompile, big.NewInt(0), uint64(1e6))
+			contract := vm.NewContract(vm.AccountRef(caller), s.precompile, big.NewInt(0), uint64(1e6))
 			contract.Input = input
 
 			contractAddr := contract.Address()
@@ -122,7 +122,7 @@ func (s *PrecompileTestSuite) TestRun() {
 			evm.WithPrecompiles(precompiles.Map, precompiles.Addresses)
 
 			// Run precompiled contract
-			bz, err := s.precompile.Run(evm, contract, tc.readOnly)
+			bz, err := s.precompile.Run(evm, contract.CallerAddress, contractAddr, contract.Input, contract.Value(), tc.readOnly)
 
 			// Check results
 			if tc.expPass {

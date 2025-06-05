@@ -8,7 +8,7 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/evmos/evmos/v20/x/evm/core/vm"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 const (
@@ -26,12 +26,7 @@ const (
 // Balances returns all the native token balances (address, amount) for a given
 // account. This method charges the account the corresponding value of an ERC-20
 // balanceOf call for each token returned.
-func (p Precompile) Balances(
-	ctx sdk.Context,
-	_ *vm.Contract,
-	method *abi.Method,
-	args []interface{},
-) ([]byte, error) {
+func (p Precompile) Balances(ctx sdk.Context, caller common.Address, method *abi.Method, args []interface{}, value *big.Int, readOnly bool) ([]byte, error) {
 	account, err := ParseBalancesArgs(args)
 	if err != nil {
 		return nil, err
@@ -68,12 +63,7 @@ func (p Precompile) Balances(
 // TotalSupply returns the total supply of all the native tokens.
 // This method charges the account the corresponding value of a ERC-20 totalSupply
 // call for each token returned.
-func (p Precompile) TotalSupply(
-	ctx sdk.Context,
-	_ *vm.Contract,
-	method *abi.Method,
-	_ []interface{},
-) ([]byte, error) {
+func (p Precompile) TotalSupply(ctx sdk.Context, caller common.Address, method *abi.Method, args []interface{}, value *big.Int, readOnly bool) ([]byte, error) {
 	i := 0
 	totalSupply := make([]Balance, 0)
 
@@ -103,12 +93,7 @@ func (p Precompile) TotalSupply(
 }
 
 // SupplyOf returns the total native supply of a given registered erc20 token.
-func (p Precompile) SupplyOf(
-	ctx sdk.Context,
-	_ *vm.Contract,
-	method *abi.Method,
-	args []interface{},
-) ([]byte, error) {
+func (p Precompile) SupplyOf(ctx sdk.Context, caller common.Address, method *abi.Method, args []interface{}, value *big.Int, readOnly bool) ([]byte, error) {
 	erc20ContractAddress, err := ParseSupplyOfArgs(args)
 	if err != nil {
 		return nil, err

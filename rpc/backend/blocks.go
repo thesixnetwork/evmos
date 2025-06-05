@@ -51,6 +51,27 @@ func (b *Backend) BlockNumber() (hexutil.Uint64, error) {
 	return hexutil.Uint64(height), nil
 }
 
+func (b *Backend) BlockNumberUin64() (int64, error) {
+	// do any grpc query, ignore the response and use the returned block height
+	var header metadata.MD
+	_, err := b.queryClient.Params(b.ctx, &evmtypes.QueryParamsRequest{}, grpc.Header(&header))
+	if err != nil {
+		return int64(0), err
+	}
+
+	blockHeightHeader := header.Get(grpctypes.GRPCBlockHeightHeader)
+	if headerLen := len(blockHeightHeader); headerLen != 1 {
+		return 0, fmt.Errorf("unexpected '%s' gRPC header length; got %d, expected: %d", grpctypes.GRPCBlockHeightHeader, headerLen, 1)
+	}
+
+	height, err := strconv.ParseUint(blockHeightHeader[0], 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse block height: %w", err)
+	}
+
+	return int64(height), nil
+}
+
 // GetBlockByNumber returns the JSON-RPC compatible Ethereum block identified by
 // block number. Depending on fullTx it either returns the full transaction
 // objects or if false only the hashes of the transactions.
@@ -78,6 +99,19 @@ func (b *Backend) GetBlockByNumber(blockNum rpctypes.BlockNumber, fullTx bool) (
 	}
 
 	return res, nil
+}
+
+func (b *Backend) BlockTime() (uint64, error) {
+	bn, err := b.BlockNumberUin64()
+	if err != nil {
+		return uint64(0), err
+	}
+	tmbn := rpctypes.NewBlockNumber(big.NewInt(bn))
+	resBlock, err := b.TendermintBlockByNumber(tmbn)
+	if err != nil {
+		return uint64(0), err
+	}
+	return uint64(resBlock.Block.Time.Unix()), nil
 }
 
 // GetBlockByHash returns the JSON-RPC compatible Ethereum block identified by
@@ -123,6 +157,18 @@ func (b *Backend) GetBlockTransactionCountByHash(hash common.Hash) *hexutil.Uint
 	}
 
 	return b.GetBlockTransactionCount(block)
+}
+
+// GetBlockNumberByHash returns the block height of given block hash
+func (b *Backend) GetBlockNumberByHash(blockHash common.Hash) (*big.Int, error) {
+	resBlock, err := b.GetTendermintBlockByHash(blockHash)
+	if err != nil {
+		return nil, err
+	}
+	if resBlock == nil {
+		return nil, errors.Errorf("block not found for hash %s", blockHash.Hex())
+	}
+	return big.NewInt(resBlock.Block.Height), nil
 }
 
 // GetBlockTransactionCountByNumber returns the number of Ethereum transactions
@@ -175,6 +221,22 @@ func (b *Backend) TendermintBlockByNumber(blockNum rpctypes.BlockNumber) (*tmrpc
 
 	if resBlock.Block == nil {
 		b.logger.Debug("TendermintBlockByNumber block not found", "height", height)
+		return nil, nil
+	}
+
+	return resBlock, nil
+}
+
+// GetTendermintBlockByHash returns a Tendermint format block by block number
+func (b *Backend) GetTendermintBlockByHash(blockHash common.Hash) (*tmrpctypes.ResultBlock, error) {
+	resBlock, err := b.clientCtx.Client.BlockByHash(b.ctx, blockHash.Bytes())
+	if err != nil {
+		b.logger.Debug("tendermint client failed to get block", "blockHash", blockHash.Hex(), "error", err.Error())
+		return nil, err
+	}
+
+	if resBlock == nil || resBlock.Block == nil {
+		b.logger.Debug("GetTendermintBlockByHash block not found", "blockHash", blockHash.Hex())
 		return nil, nil
 	}
 

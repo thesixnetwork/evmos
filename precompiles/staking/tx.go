@@ -53,7 +53,7 @@ const (
 func (p Precompile) CreateValidator(
 	ctx sdk.Context,
 	origin common.Address,
-	contract *vm.Contract,
+	caller common.Address,
 	stateDB vm.StateDB,
 	method *abi.Method,
 	args []interface{},
@@ -80,7 +80,7 @@ func (p Precompile) CreateValidator(
 	// ATM there's no authorization type for the MsgCreateValidator
 	// and MsgEditValidator (source: https://github.com/cosmos/cosmos-sdk/blob/4bd73b667f8aed50ad4602ddf862a4ed6e1450a8/x/staking/proto/cosmos/staking/v1beta1/authz.proto#L39-L50)
 	// so, for the time being, we won't allow calls from smart contracts
-	if contract.CallerAddress != origin {
+	if caller != origin {
 		return nil, errors.New(ErrCannotCallFromContract)
 	}
 
@@ -110,7 +110,7 @@ func (p Precompile) CreateValidator(
 func (p Precompile) EditValidator(
 	ctx sdk.Context,
 	origin common.Address,
-	contract *vm.Contract,
+	caller common.Address,
 	stateDB vm.StateDB,
 	method *abi.Method,
 	args []interface{},
@@ -131,7 +131,7 @@ func (p Precompile) EditValidator(
 	// ATM there's no authorization type for the MsgCreateValidator
 	// and MsgEditValidator (source: https://github.com/cosmos/cosmos-sdk/blob/4bd73b667f8aed50ad4602ddf862a4ed6e1450a8/x/staking/proto/cosmos/staking/v1beta1/authz.proto#L39-L50)
 	// so, for the time being, we won't allow calls from smart contracts
-	if contract.CallerAddress != origin {
+	if caller != origin {
 		return nil, errors.New(ErrCannotCallFromContract)
 	}
 
@@ -158,7 +158,7 @@ func (p Precompile) EditValidator(
 func (p *Precompile) Delegate(
 	ctx sdk.Context,
 	origin common.Address,
-	contract *vm.Contract,
+	caller common.Address,
 	stateDB vm.StateDB,
 	method *abi.Method,
 	args []interface{},
@@ -190,9 +190,9 @@ func (p *Precompile) Delegate(
 		expiration *time.Time
 
 		// isCallerOrigin is true when the contract caller is the same as the origin
-		isCallerOrigin = contract.CallerAddress == origin
+		isCallerOrigin = caller == origin
 		// isCallerDelegator is true when the contract caller is the same as the delegator
-		isCallerDelegator = contract.CallerAddress == delegatorHexAddr
+		isCallerDelegator = caller == delegatorHexAddr
 	)
 
 	// The provided delegator address should always be equal to the origin address.
@@ -209,7 +209,7 @@ func (p *Precompile) Delegate(
 	// no need to have authorization when the contract caller is the same as origin (owner of funds)
 	if !isCallerOrigin {
 		// Check if the authorization grant exists for the caller and the origin
-		stakeAuthz, expiration, err = authorization.CheckAuthzAndAllowanceForGranter(ctx, p.AuthzKeeper, contract.CallerAddress, delegatorHexAddr, &msg.Amount, DelegateMsg)
+		stakeAuthz, expiration, err = authorization.CheckAuthzAndAllowanceForGranter(ctx, p.AuthzKeeper, caller, delegatorHexAddr, &msg.Amount, DelegateMsg)
 		if err != nil {
 			return nil, err
 		}
@@ -223,7 +223,7 @@ func (p *Precompile) Delegate(
 
 	// Only update the authorization if the contract caller is different from the origin
 	if !isCallerOrigin {
-		if err := p.UpdateStakingAuthorization(ctx, contract.CallerAddress, delegatorHexAddr, stakeAuthz, expiration, DelegateMsg, msg); err != nil {
+		if err := p.UpdateStakingAuthorization(ctx, caller, delegatorHexAddr, stakeAuthz, expiration, DelegateMsg, msg); err != nil {
 			return nil, err
 		}
 	}
@@ -251,7 +251,7 @@ func (p *Precompile) Delegate(
 func (p Precompile) Undelegate(
 	ctx sdk.Context,
 	origin common.Address,
-	contract *vm.Contract,
+	caller common.Address,
 	stateDB vm.StateDB,
 	method *abi.Method,
 	args []interface{},
@@ -283,9 +283,9 @@ func (p Precompile) Undelegate(
 		expiration *time.Time
 
 		// isCallerOrigin is true when the contract caller is the same as the origin
-		isCallerOrigin = contract.CallerAddress == origin
+		isCallerOrigin = caller == origin
 		// isCallerDelegator is true when the contract caller is the same as the delegator
-		isCallerDelegator = contract.CallerAddress == delegatorHexAddr
+		isCallerDelegator = caller == delegatorHexAddr
 	)
 
 	// The provided delegator address should always be equal to the origin address.
@@ -302,7 +302,7 @@ func (p Precompile) Undelegate(
 	// no need to have authorization when the contract caller is the same as origin (owner of funds)
 	if !isCallerOrigin {
 		// Check if the authorization grant exists for the caller and the origin
-		stakeAuthz, expiration, err = authorization.CheckAuthzAndAllowanceForGranter(ctx, p.AuthzKeeper, contract.CallerAddress, delegatorHexAddr, &msg.Amount, UndelegateMsg)
+		stakeAuthz, expiration, err = authorization.CheckAuthzAndAllowanceForGranter(ctx, p.AuthzKeeper, caller, delegatorHexAddr, &msg.Amount, UndelegateMsg)
 		if err != nil {
 			return nil, err
 		}
@@ -317,7 +317,7 @@ func (p Precompile) Undelegate(
 
 	// Only update the authorization if the contract caller is different from the origin
 	if !isCallerOrigin {
-		if err := p.UpdateStakingAuthorization(ctx, contract.CallerAddress, delegatorHexAddr, stakeAuthz, expiration, UndelegateMsg, msg); err != nil {
+		if err := p.UpdateStakingAuthorization(ctx, caller, delegatorHexAddr, stakeAuthz, expiration, UndelegateMsg, msg); err != nil {
 			return nil, err
 		}
 	}
@@ -336,7 +336,7 @@ func (p Precompile) Undelegate(
 func (p Precompile) Redelegate(
 	ctx sdk.Context,
 	origin common.Address,
-	contract *vm.Contract,
+	caller common.Address,
 	stateDB vm.StateDB,
 	method *abi.Method,
 	args []interface{},
@@ -369,9 +369,9 @@ func (p Precompile) Redelegate(
 		expiration *time.Time
 
 		// isCallerOrigin is true when the contract caller is the same as the origin
-		isCallerOrigin = contract.CallerAddress == origin
+		isCallerOrigin = caller == origin
 		// isCallerDelegator is true when the contract caller is the same as the delegator
-		isCallerDelegator = contract.CallerAddress == delegatorHexAddr
+		isCallerDelegator = caller == delegatorHexAddr
 	)
 
 	// The provided delegator address should always be equal to the origin address.
@@ -388,7 +388,7 @@ func (p Precompile) Redelegate(
 	// no need to have authorization when the contract caller is the same as origin (owner of funds)
 	if !isCallerOrigin {
 		// Check if the authorization grant exists for the caller and the origin
-		stakeAuthz, expiration, err = authorization.CheckAuthzAndAllowanceForGranter(ctx, p.AuthzKeeper, contract.CallerAddress, delegatorHexAddr, &msg.Amount, RedelegateMsg)
+		stakeAuthz, expiration, err = authorization.CheckAuthzAndAllowanceForGranter(ctx, p.AuthzKeeper, caller, delegatorHexAddr, &msg.Amount, RedelegateMsg)
 		if err != nil {
 			return nil, err
 		}
@@ -402,7 +402,7 @@ func (p Precompile) Redelegate(
 
 	// Only update the authorization if the contract caller is different from the origin
 	if !isCallerOrigin {
-		if err := p.UpdateStakingAuthorization(ctx, contract.CallerAddress, delegatorHexAddr, stakeAuthz, expiration, RedelegateMsg, msg); err != nil {
+		if err := p.UpdateStakingAuthorization(ctx, caller, delegatorHexAddr, stakeAuthz, expiration, RedelegateMsg, msg); err != nil {
 			return nil, err
 		}
 	}
@@ -420,7 +420,7 @@ func (p Precompile) Redelegate(
 func (p Precompile) CancelUnbondingDelegation(
 	ctx sdk.Context,
 	origin common.Address,
-	contract *vm.Contract,
+	caller common.Address,
 	stateDB vm.StateDB,
 	method *abi.Method,
 	args []interface{},
@@ -453,9 +453,9 @@ func (p Precompile) CancelUnbondingDelegation(
 		expiration *time.Time
 
 		// isCallerOrigin is true when the contract caller is the same as the origin
-		isCallerOrigin = contract.CallerAddress == origin
+		isCallerOrigin = caller == origin
 		// isCallerDelegator is true when the contract caller is the same as the delegator
-		isCallerDelegator = contract.CallerAddress == delegatorHexAddr
+		isCallerDelegator = caller == delegatorHexAddr
 	)
 
 	// The provided delegator address should always be equal to the origin address.
@@ -472,7 +472,7 @@ func (p Precompile) CancelUnbondingDelegation(
 	// no need to have authorization when the contract caller is the same as origin (owner of funds)
 	if !isCallerOrigin {
 		// Check if the authorization grant exists for the caller and the origin
-		stakeAuthz, expiration, err = authorization.CheckAuthzAndAllowanceForGranter(ctx, p.AuthzKeeper, contract.CallerAddress, delegatorHexAddr, &msg.Amount, CancelUnbondingDelegationMsg)
+		stakeAuthz, expiration, err = authorization.CheckAuthzAndAllowanceForGranter(ctx, p.AuthzKeeper, caller, delegatorHexAddr, &msg.Amount, CancelUnbondingDelegationMsg)
 		if err != nil {
 			return nil, err
 		}
@@ -485,7 +485,7 @@ func (p Precompile) CancelUnbondingDelegation(
 
 	// Only update the authorization if the contract caller is different from the origin
 	if !isCallerOrigin {
-		if err := p.UpdateStakingAuthorization(ctx, contract.CallerAddress, delegatorHexAddr, stakeAuthz, expiration, CancelUnbondingDelegationMsg, msg); err != nil {
+		if err := p.UpdateStakingAuthorization(ctx, caller, delegatorHexAddr, stakeAuthz, expiration, CancelUnbondingDelegationMsg, msg); err != nil {
 			return nil, err
 		}
 	}

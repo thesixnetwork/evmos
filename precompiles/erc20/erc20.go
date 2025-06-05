@@ -6,11 +6,14 @@ package erc20
 import (
 	"embed"
 	"fmt"
+	"math/big"
 
 	cmn "github.com/evmos/evmos/v20/precompiles/common"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/evmos/evmos/v20/x/evm/core/vm"
+	"github.com/evmos/evmos/v20/x/evm/statedb"
 
 	storetypes "cosmossdk.io/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -129,27 +132,28 @@ func (p Precompile) RequiredGas(input []byte) uint64 {
 }
 
 // Run executes the precompiled contract ERC-20 methods defined in the ABI.
-func (p Precompile) Run(evm *vm.EVM, contract *vm.Contract, readOnly bool) (bz []byte, err error) {
-	ctx, stateDB, snapshot, method, initialGas, args, err := p.RunSetup(evm, contract, readOnly, p.IsTransaction)
+func (p Precompile) Run(evm *vm.EVM, caller common.Address, callingContract common.Address, input []byte, value *big.Int, readOnly bool) (bz []byte, err error) {
+	ctx, method, args, err := p.Prepare(evm, input, value, readOnly)
 	if err != nil {
 		return nil, err
 	}
 
-	// This handles any out of gas errors that may occur during the execution of a precompile tx or query.
-	// It avoids panics and returns the out of gas error so the EVM can continue gracefully.
-	defer cmn.HandleGasError(ctx, contract, initialGas, &err)()
-
-	bz, err = p.HandleMethod(ctx, contract, stateDB, method, args)
-	if err != nil {
-		return nil, err
-	}
-
-	cost := ctx.GasMeter().GasConsumed() - initialGas
-
-	if !contract.UseGas(cost) {
+	stateDB, ok := evm.StateDB.(*statedb.StateDB)
+	if !ok {
 		return nil, vm.ErrOutOfGas
 	}
-	if err := p.AddJournalEntries(stateDB, snapshot); err != nil {
+
+	initialGas := ctx.GasMeter().GasConsumed()
+	// This handles any out of gas errors that may occur during the execution of a precompile tx or query.
+	// It avoids panics and returns the out of gas error so the EVM can continue gracefully.
+	defer cmn.HandleGasError(ctx, p.RequiredGas(input), initialGas, &err)()
+
+	bz, err = p.HandleMethod(ctx, stateDB, caller, method, args)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := p.AddJournalEntries(stateDB, ctx); err != nil {
 		return nil, err
 	}
 	return bz, nil
@@ -172,36 +176,36 @@ func (Precompile) IsTransaction(methodName string) bool {
 // HandleMethod handles the execution of each of the ERC-20 methods.
 func (p *Precompile) HandleMethod(
 	ctx sdk.Context,
-	contract *vm.Contract,
 	stateDB vm.StateDB,
+	caller common.Address,
 	method *abi.Method,
 	args []interface{},
 ) (bz []byte, err error) {
 	switch method.Name {
 	// ERC-20 transactions
 	case TransferMethod:
-		bz, err = p.Transfer(ctx, contract, stateDB, method, args)
+		bz, err = p.Transfer(ctx, caller, stateDB, method, args)
 	case TransferFromMethod:
-		bz, err = p.TransferFrom(ctx, contract, stateDB, method, args)
+		bz, err = p.TransferFrom(ctx, caller, stateDB, method, args)
 	case auth.ApproveMethod:
-		bz, err = p.Approve(ctx, contract, stateDB, method, args)
+		bz, err = p.Approve(ctx, caller, stateDB, method, args)
 	case auth.IncreaseAllowanceMethod:
-		bz, err = p.IncreaseAllowance(ctx, contract, stateDB, method, args)
+		bz, err = p.IncreaseAllowance(ctx, caller, stateDB, method, args)
 	case auth.DecreaseAllowanceMethod:
-		bz, err = p.DecreaseAllowance(ctx, contract, stateDB, method, args)
+		bz, err = p.DecreaseAllowance(ctx, caller, stateDB, method, args)
 	// ERC-20 queries
 	case NameMethod:
-		bz, err = p.Name(ctx, contract, stateDB, method, args)
+		bz, err = p.Name(ctx, caller, stateDB, method, args)
 	case SymbolMethod:
-		bz, err = p.Symbol(ctx, contract, stateDB, method, args)
+		bz, err = p.Symbol(ctx, caller, stateDB, method, args)
 	case DecimalsMethod:
-		bz, err = p.Decimals(ctx, contract, stateDB, method, args)
+		bz, err = p.Decimals(ctx, caller, stateDB, method, args)
 	case TotalSupplyMethod:
-		bz, err = p.TotalSupply(ctx, contract, stateDB, method, args)
+		bz, err = p.TotalSupply(ctx, caller, stateDB, method, args)
 	case BalanceOfMethod:
-		bz, err = p.BalanceOf(ctx, contract, stateDB, method, args)
+		bz, err = p.BalanceOf(ctx, caller, stateDB, method, args)
 	case auth.AllowanceMethod:
-		bz, err = p.Allowance(ctx, contract, stateDB, method, args)
+		bz, err = p.Allowance(ctx, caller, stateDB, method, args)
 	default:
 		return nil, fmt.Errorf(cmn.ErrUnknownMethod, method.Name)
 	}

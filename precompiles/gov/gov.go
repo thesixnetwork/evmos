@@ -6,6 +6,7 @@ package gov
 import (
 	"embed"
 	"fmt"
+	"math/big"
 
 	"cosmossdk.io/log"
 	storetypes "cosmossdk.io/store/types"
@@ -18,6 +19,7 @@ import (
 
 	cmn "github.com/evmos/evmos/v20/precompiles/common"
 	"github.com/evmos/evmos/v20/x/evm/core/vm"
+	"github.com/evmos/evmos/v20/x/evm/statedb"
 	evmtypes "github.com/evmos/evmos/v20/x/evm/types"
 )
 
@@ -82,19 +84,26 @@ func (p Precompile) RequiredGas(input []byte) uint64 {
 		return 0
 	}
 
-	return p.Precompile.RequiredGas(input, p.IsTransaction(method.Name))
+	return cmn.DefaultGasCost(input, p.IsTransaction(method.Name))
 }
 
 // Run executes the precompiled contract gov methods defined in the ABI.
-func (p Precompile) Run(evm *vm.EVM, contract *vm.Contract, readOnly bool) (bz []byte, err error) {
-	ctx, stateDB, snapshot, method, initialGas, args, err := p.RunSetup(evm, contract, readOnly, p.IsTransaction)
+func (p Precompile) Run(evm *vm.EVM, caller common.Address, callingContract common.Address, input []byte, value *big.Int, readOnly bool) (bz []byte, err error) {
+	ctx, method, args, err := p.Prepare(evm, input, value, readOnly)
 	if err != nil {
 		return nil, err
 	}
 
+	stateDB, ok := evm.StateDB.(*statedb.StateDB)
+	if !ok {
+		return nil, vm.ErrOutOfGas
+	}
+
+	initialGas := ctx.GasMeter().GasConsumed()
+
 	// This handles any out of gas errors that may occur during the execution of a precompile tx or query.
 	// It avoids panics and returns the out of gas error so the EVM can continue gracefully.
-	defer cmn.HandleGasError(ctx, contract, initialGas, &err)()
+	defer cmn.HandleGasError(ctx, p.RequiredGas(input), initialGas, &err)()
 
 	if err := stateDB.Commit(); err != nil {
 		return nil, err
@@ -103,20 +112,20 @@ func (p Precompile) Run(evm *vm.EVM, contract *vm.Contract, readOnly bool) (bz [
 	switch method.Name {
 	// gov transactions
 	case VoteMethod:
-		bz, err = p.Vote(ctx, evm.Origin, contract, stateDB, method, args)
+		bz, err = p.Vote(ctx, evm.Origin, caller, stateDB, method, args)
 	case VoteWeightedMethod:
-		bz, err = p.VoteWeighted(ctx, evm.Origin, contract, stateDB, method, args)
+		bz, err = p.VoteWeighted(ctx, evm.Origin, caller, stateDB, method, args)
 	// gov queries
 	case GetVoteMethod:
-		bz, err = p.GetVote(ctx, method, contract, args)
+		bz, err = p.GetVote(ctx, method, caller, args)
 	case GetVotesMethod:
-		bz, err = p.GetVotes(ctx, method, contract, args)
+		bz, err = p.GetVotes(ctx, method, caller, args)
 	case GetDepositMethod:
-		bz, err = p.GetDeposit(ctx, method, contract, args)
+		bz, err = p.GetDeposit(ctx, method, caller, args)
 	case GetDepositsMethod:
-		bz, err = p.GetDeposits(ctx, method, contract, args)
+		bz, err = p.GetDeposits(ctx, method, caller, args)
 	case GetTallyResultMethod:
-		bz, err = p.GetTallyResult(ctx, method, contract, args)
+		bz, err = p.GetTallyResult(ctx, method, caller, args)
 	default:
 		return nil, fmt.Errorf(cmn.ErrUnknownMethod, method.Name)
 	}
@@ -125,13 +134,7 @@ func (p Precompile) Run(evm *vm.EVM, contract *vm.Contract, readOnly bool) (bz [
 		return nil, err
 	}
 
-	cost := ctx.GasMeter().GasConsumed() - initialGas
-
-	if !contract.UseGas(cost) {
-		return nil, vm.ErrOutOfGas
-	}
-
-	if err := p.AddJournalEntries(stateDB, snapshot); err != nil {
+	if err := p.AddJournalEntries(stateDB, ctx); err != nil {
 		return nil, err
 	}
 

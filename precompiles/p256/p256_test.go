@@ -6,11 +6,11 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"math/big"
 
 	"github.com/cometbft/cometbft/crypto"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/evmos/evmos/v20/precompiles/p256"
-	"github.com/evmos/evmos/v20/x/evm/core/vm"
 	evmtypes "github.com/evmos/evmos/v20/x/evm/types"
 )
 
@@ -117,7 +117,7 @@ func (s *PrecompileTestSuite) TestRun() {
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
 			input := tc.sign()
-			bz, err := s.precompile.Run(nil, &vm.Contract{Input: input}, false)
+			bz, err := s.precompile.Run(nil, common.Address{}, common.Address{}, input, big.NewInt(0), false)
 			if tc.expPass {
 				s.Require().NoError(err)
 				s.Require().Equal(trueValue, bz)

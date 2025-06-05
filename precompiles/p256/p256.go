@@ -60,8 +60,7 @@ func (p Precompile) RequiredGas(_ []byte) uint64 {
 //
 // Output data: 32 bytes of result data and error
 //   - If the signature verification process succeeds, it returns 1 in 32 bytes format
-func (p *Precompile) Run(_ *vm.EVM, contract *vm.Contract, _ bool) (bz []byte, err error) {
-	input := contract.Input
+func (p Precompile) Run(_ *vm.EVM, _ common.Address, _ common.Address, input []byte, value *big.Int, readOnly bool) (bz []byte, err error) {
 	// Check the input length
 	if len(input) != VerifyInputLength {
 		// Input length is invalid

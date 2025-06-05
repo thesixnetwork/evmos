@@ -30,7 +30,7 @@ const (
 func (p *Precompile) Transfer(
 	ctx sdk.Context,
 	origin common.Address,
-	contract *vm.Contract,
+	caller common.Address,
 	stateDB vm.StateDB,
 	method *abi.Method,
 	args []interface{},
@@ -46,7 +46,7 @@ func (p *Precompile) Transfer(
 	}
 
 	// isCallerSender is true when the contract caller is the same as the sender
-	isCallerSender := contract.CallerAddress == sender
+	isCallerSender := caller == sender
 
 	// If the contract caller is not the same as the sender, the sender must be the origin
 	if !isCallerSender && origin != sender {
@@ -55,7 +55,7 @@ func (p *Precompile) Transfer(
 
 	// no need to have authorization when the contract caller is the same as origin (owner of funds)
 	// and the sender is the origin
-	resp, expiration, err := CheckAndAcceptAuthorizationIfNeeded(ctx, contract, origin, p.AuthzKeeper, msg)
+	resp, expiration, err := CheckAndAcceptAuthorizationIfNeeded(ctx, caller, origin, p.AuthzKeeper, msg)
 	if err != nil {
 		return nil, err
 	}
@@ -65,11 +65,11 @@ func (p *Precompile) Transfer(
 		return nil, err
 	}
 
-	if err := UpdateGrantIfNeeded(ctx, contract, p.AuthzKeeper, origin, expiration, resp); err != nil {
+	if err := UpdateGrantIfNeeded(ctx, caller, p.AuthzKeeper, origin, expiration, resp); err != nil {
 		return nil, err
 	}
 
-	if contract.CallerAddress != origin && msg.Token.Denom == utils.BaseDenom {
+	if caller != origin && msg.Token.Denom == utils.BaseDenom {
 		// escrow address is also changed on this tx, and it is not a module account
 		// so we need to account for this on the UpdateDirties
 		escrowAccAddress := transfertypes.GetEscrowAddress(msg.SourcePort, msg.SourceChannel)

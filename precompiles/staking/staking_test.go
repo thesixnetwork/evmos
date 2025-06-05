@@ -438,7 +438,7 @@ func (s *PrecompileTestSuite) TestRun() {
 			delegator := s.keyring.GetKey(0)
 			grantee := s.keyring.GetKey(1)
 
-			contract := vm.NewPrecompile(vm.AccountRef(delegator.Addr), s.precompile, big.NewInt(0), tc.gas)
+			contract := vm.NewContract(vm.AccountRef(delegator.Addr), s.precompile, big.NewInt(0), tc.gas)
 			contractAddr := contract.Address()
 
 			// malleate testcase
@@ -482,7 +482,7 @@ func (s *PrecompileTestSuite) TestRun() {
 			evm.WithPrecompiles(precompiles.Map, precompiles.Addresses)
 
 			// Run precompiled contract
-			bz, err := s.precompile.Run(evm, contract, tc.readOnly)
+			bz, err := s.precompile.Run(evm, contract.CallerAddress, contractAddr, contract.Input, contract.Value(), tc.readOnly)
 
 			// Check results
 			if tc.expPass {

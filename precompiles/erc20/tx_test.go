@@ -99,7 +99,7 @@ func (s *PrecompileTestSuite) TestTransfer() {
 			err = s.network.App.BankKeeper.SendCoinsFromModuleToAccount(s.network.GetContext(), erc20types.ModuleName, fromAddr.Bytes(), XMPLCoin)
 			s.Require().NoError(err, "failed to send coins from module to account")
 
-			_, err = s.precompile.Transfer(ctx, contract, stateDB, &method, tc.malleate())
+			_, err = s.precompile.Transfer(ctx, contract.CallerAddress, stateDB, &method, tc.malleate())
 			if tc.expErr {
 				s.Require().Error(err, "expected transfer transaction to fail")
 				s.Require().Contains(err.Error(), tc.errContains, "expected transfer transaction to fail with specific error")
@@ -252,7 +252,7 @@ func (s *PrecompileTestSuite) TestTransferFrom() {
 			err = s.network.App.BankKeeper.SendCoinsFromModuleToAccount(ctx, erc20types.ModuleName, owner.AccAddr, XMPLCoin)
 			s.Require().NoError(err, "failed to send coins from module to account")
 
-			_, err = s.precompile.TransferFrom(ctx, contract, stDB, &method, tc.malleate())
+			_, err = s.precompile.TransferFrom(ctx, contract.CallerAddress, stDB, &method, tc.malleate())
 			if tc.expErr {
 				s.Require().Error(err, "expected transfer transaction to fail")
 				s.Require().Contains(err.Error(), tc.errContains, "expected transfer transaction to fail with specific error")

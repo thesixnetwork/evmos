@@ -209,7 +209,7 @@ func (s *PrecompileTestSuite) TestFundVestingAccount() {
 			var contract *vm.Contract
 			contract, ctx = testutil.NewPrecompileContract(s.T(), ctx, s.keyring.GetAddr(0), s.precompile, tc.gas)
 
-			bz, err := s.precompile.FundVestingAccount(ctx, contract, s.keyring.GetAddr(0), s.network.GetStateDB(), &method, tc.malleate())
+			bz, err := s.precompile.FundVestingAccount(ctx, contract.CallerAddress, s.keyring.GetAddr(0), s.network.GetStateDB(), &method, tc.malleate())
 
 			if tc.expError {
 				s.Require().ErrorContains(err, tc.errContains)
@@ -289,7 +289,7 @@ func (s *PrecompileTestSuite) TestClawback() {
 			var contract *vm.Contract
 			contract, ctx = testutil.NewPrecompileContract(s.T(), ctx, s.keyring.GetAddr(0), s.precompile, tc.gas)
 
-			bz, err := s.precompile.Clawback(ctx, contract, s.keyring.GetAddr(0), s.network.GetStateDB(), &method, tc.malleate())
+			bz, err := s.precompile.Clawback(ctx, contract.CallerAddress, s.keyring.GetAddr(0), s.network.GetStateDB(), &method, tc.malleate())
 
 			if tc.expError {
 				s.Require().ErrorContains(err, tc.errContains)
@@ -377,7 +377,7 @@ func (s *PrecompileTestSuite) TestUpdateVestingFunder() {
 			var contract *vm.Contract
 			contract, ctx = testutil.NewPrecompileContract(s.T(), ctx, s.keyring.GetAddr(0), s.precompile, tc.gas)
 
-			bz, err := s.precompile.UpdateVestingFunder(ctx, contract, s.keyring.GetAddr(0), s.network.GetStateDB(), &method, tc.malleate())
+			bz, err := s.precompile.UpdateVestingFunder(ctx, contract.CallerAddress, s.keyring.GetAddr(0), s.network.GetStateDB(), &method, tc.malleate())
 
 			if tc.expError {
 				s.Require().ErrorContains(err, tc.errContains)

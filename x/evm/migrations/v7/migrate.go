@@ -4,8 +4,6 @@
 package v7
 
 import (
-	"fmt"
-
 	storetypes "cosmossdk.io/store/types"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -64,10 +62,9 @@ func MigrateStore(
 	// Migrate old ExtraEIPs from int64 to string. Since no Evmos EIPs have been
 	// created before and activators contains only `ethereum_XXXX` activations,
 	// all values will be prefixed with `ethereum_`.
-	params.ExtraEIPs = make([]string, 0, len(paramsV6.ExtraEIPs))
+	params.ExtraEIPs = make([]int32, 0, len(paramsV6.ExtraEIPs))
 	for _, eip := range paramsV6.ExtraEIPs {
-		eipName := fmt.Sprintf("ethereum_%d", eip)
-		params.ExtraEIPs = append(params.ExtraEIPs, eipName)
+		params.ExtraEIPs = append(params.ExtraEIPs, int32(eip))
 	}
 
 	if err := params.Validate(); err != nil {

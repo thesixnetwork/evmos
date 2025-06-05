@@ -12,9 +12,9 @@ import (
 	stakingkeeper "github.com/cosmos/cosmos-sdk/x/staking/keeper"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/evmos/evmos/v20/precompiles/authorization"
 	cmn "github.com/evmos/evmos/v20/precompiles/common"
-	"github.com/evmos/evmos/v20/x/evm/core/vm"
 )
 
 const (
@@ -41,7 +41,7 @@ const (
 // Delegation returns the delegation that a delegator has with a specific validator.
 func (p Precompile) Delegation(
 	ctx sdk.Context,
-	_ *vm.Contract,
+	_ common.Address,
 	method *abi.Method,
 	args []interface{},
 ) ([]byte, error) {
@@ -75,7 +75,7 @@ func (p Precompile) Delegation(
 // a specific validator.
 func (p Precompile) UnbondingDelegation(
 	ctx sdk.Context,
-	_ *vm.Contract,
+	_ common.Address,
 	method *abi.Method,
 	args []interface{},
 ) ([]byte, error) {
@@ -105,7 +105,7 @@ func (p Precompile) UnbondingDelegation(
 func (p Precompile) Validator(
 	ctx sdk.Context,
 	method *abi.Method,
-	_ *vm.Contract,
+	_ common.Address,
 	args []interface{},
 ) ([]byte, error) {
 	req, err := NewValidatorRequest(args)
@@ -134,7 +134,7 @@ func (p Precompile) Validator(
 func (p Precompile) Validators(
 	ctx sdk.Context,
 	method *abi.Method,
-	_ *vm.Contract,
+	_ common.Address,
 	args []interface{},
 ) ([]byte, error) {
 	req, err := NewValidatorsRequest(method, args)
@@ -158,7 +158,7 @@ func (p Precompile) Validators(
 func (p Precompile) Redelegation(
 	ctx sdk.Context,
 	method *abi.Method,
-	_ *vm.Contract,
+	_ common.Address,
 	args []interface{},
 ) ([]byte, error) {
 	req, err := NewRedelegationRequest(args)
@@ -180,7 +180,7 @@ func (p Precompile) Redelegation(
 func (p Precompile) Redelegations(
 	ctx sdk.Context,
 	method *abi.Method,
-	_ *vm.Contract,
+	_ common.Address,
 	args []interface{},
 ) ([]byte, error) {
 	req, err := NewRedelegationsRequest(method, args)
@@ -204,7 +204,7 @@ func (p Precompile) Redelegations(
 func (p Precompile) Allowance(
 	ctx sdk.Context,
 	method *abi.Method,
-	_ *vm.Contract,
+	_ common.Address,
 	args []interface{},
 ) ([]byte, error) {
 	grantee, granter, msg, err := authorization.CheckAllowanceArgs(args)

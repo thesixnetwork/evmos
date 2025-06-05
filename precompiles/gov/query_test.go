@@ -75,7 +75,7 @@ func (s *PrecompileTestSuite) TestGetVotes() {
 			var contract *vm.Contract
 			contract, ctx = testutil.NewPrecompileContract(s.T(), ctx, s.keyring.GetAddr(0), s.precompile, tc.gas)
 
-			bz, err := s.precompile.GetVotes(ctx, &method, contract, tc.args)
+			bz, err := s.precompile.GetVotes(ctx, &method, contract.CallerAddress, tc.args)
 
 			if tc.expPass {
 				var out gov.VotesOutput
@@ -146,7 +146,7 @@ func (s *PrecompileTestSuite) TestGetVote() {
 			contract, ctx := testutil.NewPrecompileContract(s.T(), s.network.GetContext(), s.keyring.GetAddr(0), s.precompile, tc.gas)
 
 			args := []interface{}{tc.propNumber, common.BytesToAddress(voter.Bytes())}
-			bz, err := s.precompile.GetVote(ctx, &method, contract, args)
+			bz, err := s.precompile.GetVote(ctx, &method, contract.CallerAddress, args)
 
 			expVote := gov.WeightedVote{
 				ProposalId: tc.expPropNumber,
@@ -214,7 +214,7 @@ func (s *PrecompileTestSuite) TestGetDeposit() {
 			contract, ctx := testutil.NewPrecompileContract(s.T(), s.network.GetContext(), s.keyring.GetAddr(0), s.precompile, tc.gas)
 
 			args := []interface{}{tc.propNumber, common.BytesToAddress(depositor.Bytes())}
-			bz, err := s.precompile.GetDeposit(ctx, &method, contract, args)
+			bz, err := s.precompile.GetDeposit(ctx, &method, contract.CallerAddress, args)
 
 			if tc.expPass {
 				s.Require().NoError(err)
@@ -274,7 +274,7 @@ func (s *PrecompileTestSuite) TestGetDeposits() {
 			deposits := tc.malleate()
 			contract, ctx := testutil.NewPrecompileContract(s.T(), ctx, s.keyring.GetAddr(0), s.precompile, tc.gas)
 
-			bz, err := s.precompile.GetDeposits(ctx, &method, contract, tc.args)
+			bz, err := s.precompile.GetDeposits(ctx, &method, contract.CallerAddress, tc.args)
 			if tc.expPass {
 				var out gov.DepositsOutput
 				err = s.precompile.UnpackIntoInterface(&out, gov.GetDepositsMethod, bz)
@@ -338,7 +338,7 @@ func (s *PrecompileTestSuite) TestGetTallyResult() {
 			contract, ctx := testutil.NewPrecompileContract(s.T(), s.network.GetContext(), s.keyring.GetAddr(0), s.precompile, tc.gas)
 
 			args := []interface{}{tc.propNumber}
-			bz, err := s.precompile.GetTallyResult(ctx, &method, contract, args)
+			bz, err := s.precompile.GetTallyResult(ctx, &method, contract.CallerAddress, args)
 
 			if tc.expPass {
 				s.Require().NoError(err)

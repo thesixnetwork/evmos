@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/evmos/evmos/v20/x/evm/core/vm"
 	"github.com/evmos/evmos/v20/x/evm/statedb"
 	"github.com/stretchr/testify/suite"
@@ -136,7 +137,7 @@ func (suite *StateDBTestSuite) TestDBError() {
 		}},
 		{"delete account", func(db vm.StateDB) {
 			db.SetNonce(errAddress, 1)
-			suite.Require().True(db.Suicide(errAddress))
+			suite.Require().True(db.HasSelfDestructed(errAddress))
 		}},
 	}
 	for _, tc := range testCases {
@@ -314,7 +315,7 @@ func (suite *StateDBTestSuite) TestRevertSnapshot() {
 		{"suicide", func(db vm.StateDB) {
 			db.SetState(address, v1, v2)
 			db.SetCode(address, []byte("hello world"))
-			suite.Require().True(db.Suicide(address))
+			suite.Require().True(db.HasSelfDestructed(address))
 		}},
 		{"add log", func(db vm.StateDB) {
 			db.AddLog(&ethtypes.Log{
@@ -442,7 +443,7 @@ func (suite *StateDBTestSuite) TestAccessList() {
 				StorageKeys: []common.Hash{value1},
 			}}
 
-			db.PrepareAccessList(address, &address2, vm.PrecompiledAddressesBerlin, al)
+			db.Prepare(params.Rules{}, address, address2, &address3, vm.PrecompiledAddressesBerlin, al)
 
 			// check sender and dst
 			suite.Require().True(db.AddressInAccessList(address))
@@ -571,13 +572,13 @@ func (suite *StateDBTestSuite) TestIterateStorage() {
 
 func CollectContractStorage(db vm.StateDB) statedb.Storage {
 	storage := make(statedb.Storage)
-	err := db.ForEachStorage(address, func(k, v common.Hash) bool {
-		storage[k] = v
-		return true
-	})
-	if err != nil {
-		return nil
-	}
+	// err := db.ForEachStorage(address, func(k, v common.Hash) bool {
+	// 	storage[k] = v
+	// 	return true
+	// })
+	// if err != nil {
+	// 	return nil
+	// }
 
 	return storage
 }

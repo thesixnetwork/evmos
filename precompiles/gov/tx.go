@@ -26,7 +26,7 @@ const (
 func (p Precompile) Vote(
 	ctx sdk.Context,
 	origin common.Address,
-	contract *vm.Contract,
+	caller common.Address,
 	stateDB vm.StateDB,
 	method *abi.Method,
 	args []interface{},
@@ -38,7 +38,7 @@ func (p Precompile) Vote(
 
 	// If the contract is the voter, we don't need an origin check
 	// Otherwise check if the origin matches the delegator address
-	isContractVoter := contract.CallerAddress == voterHexAddr && contract.CallerAddress != origin
+	isContractVoter := caller == voterHexAddr && caller != origin
 	if !isContractVoter && origin != voterHexAddr {
 		return nil, fmt.Errorf(ErrDifferentOrigin, origin.String(), voterHexAddr.String())
 	}
@@ -59,7 +59,7 @@ func (p Precompile) Vote(
 func (p Precompile) VoteWeighted(
 	ctx sdk.Context,
 	origin common.Address,
-	contract *vm.Contract,
+	caller common.Address,
 	stateDB vm.StateDB,
 	method *abi.Method,
 	args []interface{},
@@ -71,7 +71,7 @@ func (p Precompile) VoteWeighted(
 
 	// If the contract is the voter, we don't need an origin check
 	// Otherwise check if the origin matches the delegator address
-	isContractVoter := contract.CallerAddress == voterHexAddr && contract.CallerAddress != origin
+	isContractVoter := caller == voterHexAddr && caller != origin
 	if !isContractVoter && origin != voterHexAddr {
 		return nil, fmt.Errorf(ErrDifferentOrigin, origin.String(), voterHexAddr.String())
 	}

@@ -4,6 +4,7 @@ package common
 
 import (
 	"errors"
+	"fmt"
 	"math/big"
 	"time"
 
@@ -16,36 +17,7 @@ import (
 	"github.com/evmos/evmos/v20/x/evm/statedb"
 )
 
-// Precompile is a common struct for all precompiles that holds the common data each
-// precompile needs to run which includes the ABI, Gas config, approval expiration and the authz keeper.
-type Precompile struct {
-	abi.ABI
-	AuthzKeeper          authzkeeper.Keeper
-	ApprovalExpiration   time.Duration
-	KvGasConfig          storetypes.GasConfig
-	TransientKVGasConfig storetypes.GasConfig
-	address              common.Address
-	journalEntries       []balanceChangeEntry
-}
-
-// Operation is a type that defines if the precompile call
-// produced an addition or subtraction of an account's balance
-type Operation int8
-
-const (
-	Sub Operation = iota
-	Add
-)
-
-type balanceChangeEntry struct {
-	Account common.Address
-	Amount  *big.Int
-	Op      Operation
-}
-
-func NewBalanceChangeEntry(acc common.Address, amt *big.Int, op Operation) balanceChangeEntry { //nolint:revive
-	return balanceChangeEntry{acc, amt, op}
-}
+const UnknownMethodCallGas uint64 = 3000
 
 // snapshot contains all state and events previous to the precompile call
 // This is needed to allow us to revert the changes
@@ -55,61 +27,78 @@ type snapshot struct {
 	Events     sdk.Events
 }
 
-// RequiredGas calculates the base minimum required gas for a transaction or a query.
-// It uses the method ID to determine if the input is a transaction or a query and
-// uses the Cosmos SDK gas config flat cost and the flat per byte cost * len(argBz) to calculate the gas.
-func (p Precompile) RequiredGas(input []byte, isTransaction bool) uint64 {
-	argsBz := input[4:]
+type PrecompileExecutor interface {
+	RequiredGas([]byte, *abi.Method) uint64
+	Execute(ctx sdk.Context, method *abi.Method, caller common.Address, callingContract common.Address, args []interface{}, value *big.Int, readOnly bool, evm *vm.EVM) ([]byte, error)
+}
+type Precompile struct {
+	executor PrecompileExecutor
+	name     string
+	abi.ABI
+	address common.Address
 
-	if isTransaction {
-		return p.KvGasConfig.WriteCostFlat + (p.KvGasConfig.WriteCostPerByte * uint64(len(argsBz)))
+	AuthzKeeper          authzkeeper.Keeper
+	ApprovalExpiration   time.Duration
+	KvGasConfig          storetypes.GasConfig
+	TransientKVGasConfig storetypes.GasConfig
+	journalEntries       []balanceChangeEntry
+}
+
+var _ vm.PrecompiledContract = &Precompile{}
+
+func NewPrecompile(a abi.ABI, executor PrecompileExecutor, address common.Address, name string) *Precompile {
+	return &Precompile{ABI: a, executor: executor, address: address, name: name}
+}
+
+func (p Precompile) RequiredGas(input []byte) uint64 {
+	methodID, err := ExtractMethodID(input)
+	if err != nil {
+		return UnknownMethodCallGas
 	}
 
-	return p.KvGasConfig.ReadCostFlat + (p.KvGasConfig.ReadCostPerByte * uint64(len(argsBz)))
+	method, err := p.MethodById(methodID)
+	if err != nil {
+		// This should never happen since this method is going to fail during Run
+		return UnknownMethodCallGas
+	}
+	requiredGas := p.executor.RequiredGas(input[4:], method)
+
+	fmt.Printf(" ################# REQUIRED GAS: %v ################# \n",requiredGas)
+	return requiredGas
 }
 
 // RunSetup runs the initial setup required to run a transaction or a query.
 // It returns the sdk Context, EVM stateDB, ABI method, initial gas and calling arguments.
-func (p Precompile) RunSetup(
-	evm *vm.EVM,
-	contract *vm.Contract,
-	readOnly bool,
-	isTransaction func(name string) bool,
-) (ctx sdk.Context, stateDB *statedb.StateDB, s snapshot, method *abi.Method, gasConfig storetypes.Gas, args []interface{}, err error) { //nolint:revive
+func (p Precompile) Prepare(evm *vm.EVM, input []byte, value *big.Int, readOnly bool,
+) (ctx sdk.Context, method *abi.Method, args []interface{}, err error) { //nolint:revive
 	stateDB, ok := evm.StateDB.(*statedb.StateDB)
 	if !ok {
-		return sdk.Context{}, nil, s, nil, uint64(0), nil, errors.New(ErrNotRunInEvm)
+		return sdk.Context{}, nil, nil, errors.New(ErrNotRunInEvm)
 	}
 
 	// get the stateDB cache ctx
 	ctx, err = stateDB.GetCacheContext()
 	if err != nil {
-		return sdk.Context{}, nil, s, nil, uint64(0), nil, err
+		return sdk.Context{}, nil, nil, err
 	}
-
-	// take a snapshot of the current state before any changes
-	// to be able to revert the changes
-	s.MultiStore = stateDB.MultiStoreSnapshot()
-	s.Events = ctx.EventManager().Events()
-
 	// commit the current changes in the cache ctx
 	// to get the updated state for the precompile call
 	if err := stateDB.CommitWithCacheCtx(); err != nil {
-		return sdk.Context{}, nil, s, nil, uint64(0), nil, err
+		return sdk.Context{}, nil, nil, err
 	}
 
 	// NOTE: This is a special case where the calling transaction does not specify a function name.
 	// In this case we default to a `fallback` or `receive` function on the contract.
 
 	// Simplify the calldata checks
-	isEmptyCallData := len(contract.Input) == 0
-	isShortCallData := len(contract.Input) > 0 && len(contract.Input) < 4
-	isStandardCallData := len(contract.Input) >= 4
+	isEmptyCallData := len(input) == 0
+	isShortCallData := len(input) > 0 && len(input) < 4
+	isStandardCallData := len(input) >= 4
 
 	switch {
 	// Case 1: Calldata is empty
 	case isEmptyCallData:
-		method, err = p.emptyCallData(contract)
+		method, err = p.emptyCallData(value)
 
 	// Case 2: calldata is non-empty but less than 4 bytes needed for a method
 	case isShortCallData:
@@ -117,52 +106,81 @@ func (p Precompile) RunSetup(
 
 	// Case 3: calldata is non-empty and contains the minimum 4 bytes needed for a method
 	case isStandardCallData:
-		method, err = p.standardCallData(contract)
+		method, err = p.standardCallData(input)
 	}
 
 	if err != nil {
-		return sdk.Context{}, nil, s, nil, uint64(0), nil, err
+		return sdk.Context{}, nil, nil, err
 	}
 
-	// return error if trying to write to state during a read-only call
-	if readOnly && isTransaction(method.Name) {
-		return sdk.Context{}, nil, s, nil, uint64(0), nil, vm.ErrWriteProtection
-	}
+	/*
+		FIX: validate this on each precompile not in common
+		// return error if trying to write to state during a read-only call
+		if readOnly && isTransaction(method.Name) {
+			return sdk.Context{}, nil, s, nil, uint64(0), nil, vm.ErrWriteProtection
+		}
+
+	*/
 
 	// if the method type is `function` continue looking for arguments
 	if method.Type == abi.Function {
-		argsBz := contract.Input[4:]
+		argsBz := input[4:]
 		args, err = method.Inputs.Unpack(argsBz)
 		if err != nil {
-			return sdk.Context{}, nil, s, nil, uint64(0), nil, err
+			return sdk.Context{}, nil, nil, err
 		}
 	}
 
 	initialGas := ctx.GasMeter().GasConsumed()
 
-	defer HandleGasError(ctx, contract, initialGas, &err)()
+	defer HandleGasError(ctx, p.RequiredGas(input), initialGas, &err)()
 
 	// set the default SDK gas configuration to track gas usage
 	// we are changing the gas meter type, so it panics gracefully when out of gas
-	ctx = ctx.WithGasMeter(storetypes.NewGasMeter(contract.Gas)).
+	ctx = ctx.WithGasMeter(storetypes.NewGasMeter(p.RequiredGas(input))).
 		WithKVGasConfig(p.KvGasConfig).
 		WithTransientKVGasConfig(p.TransientKVGasConfig)
 	// we need to consume the gas that was already used by the EVM
 	ctx.GasMeter().ConsumeGas(initialGas, "creating a new gas meter")
 
-	return ctx, stateDB, s, method, initialGas, args, nil
+	return ctx, method, args, nil
+}
+
+func (p Precompile) NewSnapshot(statedb *statedb.StateDB, ctx sdk.Context ) snapshot {
+	return snapshot{
+		MultiStore: statedb.MultiStoreSnapshot(),
+		Events: ctx.EventManager().Events(),
+	}
+}
+
+func (p Precompile) Run(evm *vm.EVM, caller common.Address, callingContract common.Address, input []byte, value *big.Int, readOnly bool) (bz []byte, err error) {
+	ctx, method, args, err := p.Prepare(evm, input, value, readOnly)
+	if err != nil {
+		return nil, err
+	}
+	em := ctx.EventManager()
+	ctx = ctx.WithEventManager(sdk.NewEventManager())
+	bz, err = p.executor.Execute(ctx, method, caller, callingContract, args, value, readOnly, evm)
+	if err != nil {
+		return bz, err
+	}
+	events := ctx.EventManager().Events()
+	if len(events) > 0 {
+		em.EmitEvents(ctx.EventManager().Events())
+	}
+	return bz, err
 }
 
 // HandleGasError handles the out of gas panic by resetting the gas meter and returning an error.
 // This is used in order to avoid panics and to allow for the EVM to continue cleanup if the tx or query run out of gas.
-func HandleGasError(ctx sdk.Context, contract *vm.Contract, initialGas storetypes.Gas, err *error) func() {
+func HandleGasError(ctx sdk.Context, gas storetypes.Gas, initialGas storetypes.Gas, err *error) func() {
 	return func() {
 		if r := recover(); r != nil {
 			switch r.(type) {
 			case storetypes.ErrorOutOfGas:
 				// update contract gas
-				usedGas := ctx.GasMeter().GasConsumed() - initialGas
-				_ = contract.UseGas(usedGas)
+				// usedGas := ctx.GasMeter().GasConsumed() - initialGas
+				// _ = contract.UseGas(usedGas)
 
 				*err = vm.ErrOutOfGas
 				// FIXME: add InfiniteGasMeter with previous Gas limit.
@@ -178,7 +196,9 @@ func HandleGasError(ctx sdk.Context, contract *vm.Contract, initialGas storetype
 // AddJournalEntries adds the balanceChange (if corresponds)
 // and precompileCall entries on the stateDB journal
 // This allows to revert the call changes within an evm tx
-func (p Precompile) AddJournalEntries(stateDB *statedb.StateDB, s snapshot) error {
+func (p Precompile) AddJournalEntries(stateDB *statedb.StateDB, ctx sdk.Context) error {
+	s:= p.NewSnapshot(stateDB, ctx)
+	
 	for _, entry := range p.journalEntries {
 		switch entry.Op {
 		case Sub:
@@ -212,11 +232,19 @@ func (p *Precompile) SetAddress(addr common.Address) {
 	p.address = addr
 }
 
+func (p Precompile) GetName() string {
+	return p.name
+}
+
+func (p Precompile) GetExecutor() PrecompileExecutor {
+	return p.executor
+}
+
 // emptyCallData is a helper function that returns the method to be called when the calldata is empty.
-func (p Precompile) emptyCallData(contract *vm.Contract) (method *abi.Method, err error) {
+func (p Precompile) emptyCallData(value *big.Int) (method *abi.Method, err error) {
 	switch {
 	// Case 1.1: Send call or transfer tx - 'receive' is called if present and value is transferred
-	case contract.Value().Sign() > 0 && p.HasReceive():
+	case value.Sign() > 0 && p.HasReceive():
 		return &p.Receive, nil
 	// Case 1.2: Either 'receive' is not present, or no value is transferred - call 'fallback' if present
 	case p.HasFallback():
@@ -238,8 +266,8 @@ func (p Precompile) methodIDCallData() (method *abi.Method, err error) {
 }
 
 // standardCallData is a helper function that returns the method to be called when the calldata is 4 bytes or more.
-func (p Precompile) standardCallData(contract *vm.Contract) (method *abi.Method, err error) {
-	methodID := contract.Input[:4]
+func (p Precompile) standardCallData(input []byte) (method *abi.Method, err error) {
+	methodID := input[:4]
 	// NOTE: this function iterates over the method map and returns
 	// the method with the given ID
 	method, err = p.MethodById(methodID)
@@ -255,4 +283,21 @@ func (p Precompile) standardCallData(contract *vm.Contract) (method *abi.Method,
 	}
 
 	return method, nil
+}
+
+func ExtractMethodID(input []byte) ([]byte, error) {
+	// Check if the input has at least the length needed for methodID
+	if len(input) < 4 {
+		return nil, errors.New("input too short to extract method ID")
+	}
+	return input[:4], nil
+}
+
+func DefaultGasCost(input []byte, isTransaction bool) uint64 {
+	if isTransaction {
+		defaultGast := storetypes.KVGasConfig().WriteCostFlat + (storetypes.KVGasConfig().WriteCostPerByte * uint64(len(input)))
+		return defaultGast
+	}
+
+	return storetypes.KVGasConfig().ReadCostFlat + (storetypes.KVGasConfig().ReadCostPerByte * uint64(len(input)))
 }

@@ -6,6 +6,7 @@ package vesting
 import (
 	"embed"
 	"fmt"
+	"math/big"
 
 	"github.com/evmos/evmos/v20/precompiles/authorization"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	cmn "github.com/evmos/evmos/v20/precompiles/common"
 	"github.com/evmos/evmos/v20/x/evm/core/vm"
+	"github.com/evmos/evmos/v20/x/evm/statedb"
 	evmtypes "github.com/evmos/evmos/v20/x/evm/types"
 	vestingkeeper "github.com/evmos/evmos/v20/x/vesting/keeper"
 )
@@ -52,7 +54,7 @@ func (p Precompile) RequiredGas(input []byte) uint64 {
 		return 0
 	}
 
-	return p.Precompile.RequiredGas(input, p.IsTransaction(method.Name))
+	return cmn.DefaultGasCost(input, p.IsTransaction(method.Name))
 }
 
 // NewPrecompile creates a new vesting Precompile instance as a
@@ -84,15 +86,22 @@ func NewPrecompile(
 }
 
 // Run executes the precompiled contract staking methods defined in the ABI.
-func (p Precompile) Run(evm *vm.EVM, contract *vm.Contract, readOnly bool) (bz []byte, err error) {
-	ctx, stateDB, snapshot, method, initialGas, args, err := p.RunSetup(evm, contract, readOnly, p.IsTransaction)
+func (p Precompile) Run(evm *vm.EVM, caller common.Address, callingContract common.Address, input []byte, value *big.Int, readOnly bool) (bz []byte, err error) {
+	ctx, method, args, err := p.Prepare(evm, input, value, readOnly)
 	if err != nil {
 		return nil, err
 	}
 
+	stateDB, ok := evm.StateDB.(*statedb.StateDB)
+	if !ok {
+		return nil, vm.ErrOutOfGas
+	}
+
+	initialGas := ctx.GasMeter().GasConsumed()
+
 	// This handles any out of gas errors that may occur during the execution of a precompile tx or query.
 	// It avoids panics and returns the out of gas error so the EVM can continue gracefully.
-	defer cmn.HandleGasError(ctx, contract, initialGas, &err)()
+	defer cmn.HandleGasError(ctx, p.RequiredGas(input), initialGas, &err)()
 
 	switch method.Name {
 	// Approval transaction
@@ -102,11 +111,11 @@ func (p Precompile) Run(evm *vm.EVM, contract *vm.Contract, readOnly bool) (bz [
 	case CreateClawbackVestingAccountMethod:
 		bz, err = p.CreateClawbackVestingAccount(ctx, evm.Origin, stateDB, method, args)
 	case FundVestingAccountMethod:
-		bz, err = p.FundVestingAccount(ctx, contract, evm.Origin, stateDB, method, args)
+		bz, err = p.FundVestingAccount(ctx, caller, evm.Origin, stateDB, method, args)
 	case ClawbackMethod:
-		bz, err = p.Clawback(ctx, contract, evm.Origin, stateDB, method, args)
+		bz, err = p.Clawback(ctx, caller, evm.Origin, stateDB, method, args)
 	case UpdateVestingFunderMethod:
-		bz, err = p.UpdateVestingFunder(ctx, contract, evm.Origin, stateDB, method, args)
+		bz, err = p.UpdateVestingFunder(ctx, caller, evm.Origin, stateDB, method, args)
 	case ConvertVestingAccountMethod:
 		bz, err = p.ConvertVestingAccount(ctx, stateDB, method, args)
 	// Vesting queries
@@ -118,13 +127,7 @@ func (p Precompile) Run(evm *vm.EVM, contract *vm.Contract, readOnly bool) (bz [
 		return nil, err
 	}
 
-	cost := ctx.GasMeter().GasConsumed() - initialGas
-
-	if !contract.UseGas(cost) {
-		return nil, vm.ErrOutOfGas
-	}
-
-	if err := p.AddJournalEntries(stateDB, snapshot); err != nil {
+	if err := p.AddJournalEntries(stateDB, ctx); err != nil {
 		return nil, err
 	}
 

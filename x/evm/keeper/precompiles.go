@@ -30,7 +30,7 @@ func (k *Keeper) GetPrecompileInstance(
 		addressMap[address] = precompile
 		return &Precompiles{
 			Map:       addressMap,
-			Addresses: []common.Address{precompile.Address()},
+			Addresses: []common.Address{address},
 		}, found, nil
 	}
 
@@ -43,7 +43,7 @@ func (k *Keeper) GetPrecompileInstance(
 	addressMap[address] = precompile
 	return &Precompiles{
 		Map:       addressMap,
-		Addresses: []common.Address{precompile.Address()},
+		Addresses: []common.Address{address},
 	}, found, nil
 }
 

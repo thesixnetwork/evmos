@@ -33,8 +33,8 @@ func TestExtendedEips(t *testing.T) {
 		{
 			"fail - eip already present in activators return an error",
 			func() *config.EVMConfigurator {
-				extendedEIPs := map[string]func(*vm.JumpTable){
-					"ethereum_3855": func(_ *vm.JumpTable) {},
+				extendedEIPs := map[int]func(*vm.JumpTable){
+					3855: func(_ *vm.JumpTable) {},
 				}
 				ec := config.NewEVMConfigurator().WithExtendedEips(extendedEIPs)
 				return ec
@@ -45,8 +45,8 @@ func TestExtendedEips(t *testing.T) {
 		{
 			"success - new default extra eips without duplication added",
 			func() *config.EVMConfigurator {
-				extendedEIPs := map[string]func(*vm.JumpTable){
-					"evmos_0": func(_ *vm.JumpTable) {},
+				extendedEIPs := map[int]func(*vm.JumpTable){
+					0: func(_ *vm.JumpTable) {},
 				}
 				ec := config.NewEVMConfigurator().WithExtendedEips(extendedEIPs)
 				return ec
@@ -81,7 +81,7 @@ func TestExtendedDefaultExtraEips(t *testing.T) {
 		{
 			"fail - invalid eip name",
 			func() *config.EVMConfigurator {
-				extendedDefaultExtraEIPs := []string{"os_1_000"}
+				extendedDefaultExtraEIPs := []int{000}
 				ec := config.NewEVMConfigurator().WithExtendedDefaultExtraEIPs(extendedDefaultExtraEIPs...)
 				return ec
 			},
@@ -95,13 +95,13 @@ func TestExtendedDefaultExtraEips(t *testing.T) {
 		{
 			"fail - duplicate default EIP entiries",
 			func() *config.EVMConfigurator {
-				extendedDefaultExtraEIPs := []string{"os_1000"}
-				types.DefaultExtraEIPs = append(types.DefaultExtraEIPs, "os_1000")
+				extendedDefaultExtraEIPs := []int{1000}
+				types.DefaultExtraEIPs = append(types.DefaultExtraEIPs, 1000)
 				ec := config.NewEVMConfigurator().WithExtendedDefaultExtraEIPs(extendedDefaultExtraEIPs...)
 				return ec
 			},
 			func() {
-				require.ElementsMatch(t, append(defaultExtraEIPsSnapshot, "os_1000"), types.DefaultExtraEIPs)
+				require.ElementsMatch(t, append(defaultExtraEIPsSnapshot, 1000), types.DefaultExtraEIPs)
 				types.DefaultExtraEIPs = defaultExtraEIPsSnapshot
 			},
 			false,
@@ -110,7 +110,7 @@ func TestExtendedDefaultExtraEips(t *testing.T) {
 		{
 			"success - empty default extra eip",
 			func() *config.EVMConfigurator {
-				var extendedDefaultExtraEIPs []string
+				var extendedDefaultExtraEIPs []int
 				ec := config.NewEVMConfigurator().WithExtendedDefaultExtraEIPs(extendedDefaultExtraEIPs...)
 				return ec
 			},
@@ -123,12 +123,12 @@ func TestExtendedDefaultExtraEips(t *testing.T) {
 		{
 			"success - extra default eip added",
 			func() *config.EVMConfigurator {
-				extendedDefaultExtraEIPs := []string{"os_1001"}
+				extendedDefaultExtraEIPs := []int{1001}
 				ec := config.NewEVMConfigurator().WithExtendedDefaultExtraEIPs(extendedDefaultExtraEIPs...)
 				return ec
 			},
 			func() {
-				require.ElementsMatch(t, append(defaultExtraEIPsSnapshot, "os_1001"), types.DefaultExtraEIPs)
+				require.ElementsMatch(t, append(defaultExtraEIPsSnapshot, 1001), types.DefaultExtraEIPs)
 				types.DefaultExtraEIPs = defaultExtraEIPsSnapshot
 			},
 			true,

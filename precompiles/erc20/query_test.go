@@ -198,7 +198,7 @@ func (s *PrecompileTestSuite) TestNameSymbol() {
 			s.Run("name", func() {
 				bz, err := precompile.Name(
 					s.network.GetContext(),
-					nil,
+					common.Address{},
 					nil,
 					&nameMethod,
 					[]interface{}{},
@@ -211,7 +211,7 @@ func (s *PrecompileTestSuite) TestNameSymbol() {
 			s.Run("symbol", func() {
 				bz, err := precompile.Symbol(
 					s.network.GetContext(),
-					nil,
+					common.Address{},
 					nil,
 					&symbolMethod,
 					[]interface{}{},
@@ -346,7 +346,7 @@ func (s *PrecompileTestSuite) TestDecimals() {
 
 			bz, err := precompile.Decimals(
 				s.network.GetContext(),
-				nil,
+				common.Address{},
 				nil,
 				&DecimalsMethod,
 				[]interface{}{},
@@ -399,7 +399,7 @@ func (s *PrecompileTestSuite) TestTotalSupply() {
 
 			bz, err := precompile.TotalSupply(
 				s.network.GetContext(),
-				nil,
+				common.Address{},
 				nil,
 				&method,
 				[]interface{}{},
@@ -480,7 +480,7 @@ func (s *PrecompileTestSuite) TestBalanceOf() {
 
 			bz, err := precompile.BalanceOf(
 				s.network.GetContext(),
-				nil,
+				common.Address{},
 				nil,
 				&method,
 				balanceOfArgs,
@@ -582,7 +582,7 @@ func (s *PrecompileTestSuite) TestAllowance() {
 
 			bz, err := precompile.Allowance(
 				s.network.GetContext(),
-				nil,
+				common.Address{},
 				nil,
 				&method,
 				allowanceArgs,

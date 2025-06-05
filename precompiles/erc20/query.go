@@ -46,7 +46,7 @@ const (
 // the token capitalized (e.g. uatom -> Atom).
 func (p Precompile) Name(
 	ctx sdk.Context,
-	_ *vm.Contract,
+	caller common.Address,
 	_ vm.StateDB,
 	method *abi.Method,
 	_ []interface{},
@@ -70,7 +70,7 @@ func (p Precompile) Name(
 // the token in uppercase (e.g. uatom -> ATOM).
 func (p Precompile) Symbol(
 	ctx sdk.Context,
-	_ *vm.Contract,
+	caller common.Address,
 	_ vm.StateDB,
 	method *abi.Method,
 	_ []interface{},
@@ -94,7 +94,7 @@ func (p Precompile) Symbol(
 // value from the first character of the base denomination (e.g. uatom -> 6).
 func (p Precompile) Decimals(
 	ctx sdk.Context,
-	_ *vm.Contract,
+	caller common.Address,
 	_ vm.StateDB,
 	method *abi.Method,
 	_ []interface{},
@@ -147,7 +147,7 @@ func (p Precompile) Decimals(
 // of the coin from the bank keeper and returns zero if not found.
 func (p Precompile) TotalSupply(
 	ctx sdk.Context,
-	_ *vm.Contract,
+	caller common.Address,
 	_ vm.StateDB,
 	method *abi.Method,
 	_ []interface{},
@@ -161,7 +161,7 @@ func (p Precompile) TotalSupply(
 // of the coin from the bank keeper and returns zero if not found.
 func (p Precompile) BalanceOf(
 	ctx sdk.Context,
-	_ *vm.Contract,
+	caller common.Address,
 	_ vm.StateDB,
 	method *abi.Method,
 	args []interface{},
@@ -180,7 +180,7 @@ func (p Precompile) BalanceOf(
 // checking the existence of a bank SendAuthorization.
 func (p Precompile) Allowance(
 	ctx sdk.Context,
-	_ *vm.Contract,
+	caller common.Address,
 	_ vm.StateDB,
 	method *abi.Method,
 	args []interface{},

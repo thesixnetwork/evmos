@@ -6,6 +6,7 @@ package bech32
 import (
 	"embed"
 	"fmt"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -56,13 +57,13 @@ func (p Precompile) RequiredGas(_ []byte) uint64 {
 }
 
 // Run executes the precompiled contract bech32 methods defined in the ABI.
-func (p Precompile) Run(_ *vm.EVM, contract *vm.Contract, _ bool) (bz []byte, err error) {
+func (p Precompile) Run(evm *vm.EVM, caller common.Address, callingContract common.Address, input []byte, value *big.Int, readOnly bool) (bz []byte, err error) {
 	// NOTE: This check avoid panicking when trying to decode the method ID
-	if len(contract.Input) < 4 {
+	if len(input) < 4 {
 		return nil, vm.ErrExecutionReverted
 	}
 
-	methodID := contract.Input[:4]
+	methodID := input[:4]
 	// NOTE: this function iterates over the method map and returns
 	// the method with the given ID
 	method, err := p.MethodById(methodID)
@@ -70,7 +71,7 @@ func (p Precompile) Run(_ *vm.EVM, contract *vm.Contract, _ bool) (bz []byte, er
 		return nil, err
 	}
 
-	argsBz := contract.Input[4:]
+	argsBz := input[4:]
 	args, err := method.Inputs.Unpack(argsBz)
 	if err != nil {
 		return nil, err

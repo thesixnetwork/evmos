@@ -35,7 +35,7 @@ import (
 //  5. no authorizaiton, amount 0 -> no-op but still emit Approval event
 func (p Precompile) Approve(
 	ctx sdk.Context,
-	contract *vm.Contract,
+	caller common.Address,
 	stateDB vm.StateDB,
 	method *abi.Method,
 	args []interface{},
@@ -46,7 +46,7 @@ func (p Precompile) Approve(
 	}
 
 	grantee := spender
-	granter := contract.CallerAddress
+	granter := caller
 
 	// NOTE: We do not support approvals if the grantee is the granter.
 	// This is different from the ERC20 standard but there is no reason to
@@ -102,7 +102,7 @@ func (p Precompile) Approve(
 //  3. authorization exists, addedValue positive -> update authorization
 func (p Precompile) IncreaseAllowance(
 	ctx sdk.Context,
-	contract *vm.Contract,
+	caller common.Address,
 	stateDB vm.StateDB,
 	method *abi.Method,
 	args []interface{},
@@ -113,7 +113,7 @@ func (p Precompile) IncreaseAllowance(
 	}
 
 	grantee := spender
-	granter := contract.CallerAddress
+	granter := caller
 
 	if bytes.Equal(grantee.Bytes(), granter.Bytes()) {
 		return nil, ErrSpenderIsOwner
@@ -164,7 +164,7 @@ func (p Precompile) IncreaseAllowance(
 //  6. authorization exists, subtractedValue positive and subtractedValue higher than allowance -> return error
 func (p Precompile) DecreaseAllowance(
 	ctx sdk.Context,
-	contract *vm.Contract,
+	caller common.Address,
 	stateDB vm.StateDB,
 	method *abi.Method,
 	args []interface{},
@@ -175,7 +175,7 @@ func (p Precompile) DecreaseAllowance(
 	}
 
 	grantee := spender
-	granter := contract.CallerAddress
+	granter := caller
 
 	if bytes.Equal(grantee.Bytes(), granter.Bytes()) {
 		return nil, ErrSpenderIsOwner

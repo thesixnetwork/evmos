@@ -10,9 +10,9 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	transfertypes "github.com/cosmos/ibc-go/v8/modules/apps/transfer/types"
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/evmos/evmos/v20/precompiles/authorization"
 	cmn "github.com/evmos/evmos/v20/precompiles/common"
-	"github.com/evmos/evmos/v20/x/evm/core/vm"
 )
 
 const (
@@ -30,7 +30,7 @@ const (
 // DenomTrace returns the requested denomination trace information.
 func (p Precompile) DenomTrace(
 	ctx sdk.Context,
-	_ *vm.Contract,
+	_ common.Address,
 	method *abi.Method,
 	args []interface{},
 ) ([]byte, error) {
@@ -54,7 +54,7 @@ func (p Precompile) DenomTrace(
 // DenomTraces returns the requested denomination traces information.
 func (p Precompile) DenomTraces(
 	ctx sdk.Context,
-	_ *vm.Contract,
+	_ common.Address,
 	method *abi.Method,
 	args []interface{},
 ) ([]byte, error) {
@@ -74,7 +74,7 @@ func (p Precompile) DenomTraces(
 // DenomHash returns the denom hash (in hex format) of the denomination trace information.
 func (p Precompile) DenomHash(
 	ctx sdk.Context,
-	_ *vm.Contract,
+	_ common.Address,
 	method *abi.Method,
 	args []interface{},
 ) ([]byte, error) {
