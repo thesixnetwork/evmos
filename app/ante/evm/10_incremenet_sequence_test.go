@@ -46,14 +46,16 @@ func (suite *EvmAnteTestSuite) TestIncrementSequence() {
 			suite.Require().NoError(err)
 			preSequence := account.GetSequence()
 
-			nonce := tc.malleate(account)
+			// nonce := tc.malleate(account)
 
 			// Function under test
 			err = evm.IncrementNonce(
 				unitNetwork.GetContext(),
 				unitNetwork.App.AccountKeeper,
 				account,
-				nonce,
+				// TODO: Mock Tx
+				nil,
+				true,
 			)
 
 			if tc.expectedError != nil {

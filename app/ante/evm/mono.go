@@ -31,6 +31,7 @@ type MonoDecorator struct {
 	distributionKeeper anteutils.DistributionKeeper
 	stakingKeeper      anteutils.StakingKeeper
 	maxGasWanted       uint64
+	unsafeUnorderedTx  bool
 }
 
 type DecoratorUtils struct {
@@ -58,6 +59,7 @@ func NewMonoDecorator(
 	distributionKeeper anteutils.DistributionKeeper,
 	stakingKeeper anteutils.StakingKeeper,
 	maxGasWanted uint64,
+	unsafeUnorderedTx bool,
 ) MonoDecorator {
 	return MonoDecorator{
 		accountKeeper:      accountKeeper,
@@ -67,6 +69,7 @@ func NewMonoDecorator(
 		distributionKeeper: distributionKeeper,
 		stakingKeeper:      stakingKeeper,
 		maxGasWanted:       maxGasWanted,
+		unsafeUnorderedTx:  unsafeUnorderedTx,
 	}
 }
 
@@ -300,7 +303,7 @@ func (md MonoDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, ne
 		decUtils.TxGasLimit += gas
 
 		// 10. increment sequence
-		if err := IncrementNonce(ctx, md.accountKeeper, acc, txData.GetNonce()); err != nil {
+		if err := IncrementNonce(ctx, md.accountKeeper, acc, tx, md.unsafeUnorderedTx); err != nil {
 			return ctx, err
 		}
 

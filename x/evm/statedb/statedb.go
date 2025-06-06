@@ -380,6 +380,13 @@ func (s *StateDB) SubBalance(addr common.Address, amount *big.Int) {
 	}
 }
 
+func (s *StateDB) SetBalance(addr common.Address, amount *big.Int) {
+	stateObject := s.getOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetBalance(amount)
+	}
+}
+
 // SetNonce sets the nonce of account.
 func (s *StateDB) SetNonce(addr common.Address, nonce uint64) {
 	stateObject := s.getOrNewStateObject(addr)
