@@ -1479,8 +1479,10 @@ func (suite *KeeperTestSuite) TestQueryBaseFee() {
 				evmDefault.ChainConfig.ArrowGlacierBlock = &maxInt
 				evmDefault.ChainConfig.GrayGlacierBlock = &maxInt
 				evmDefault.ChainConfig.MergeNetsplitBlock = &maxInt
-				evmDefault.ChainConfig.ShanghaiBlock = &maxInt
-				evmDefault.ChainConfig.CancunBlock = &maxInt
+				evmDefault.ChainConfig.ShanghaiTime = &maxInt
+				evmDefault.ChainConfig.CancunTime = &maxInt
+				evmDefault.ChainConfig.PragueTime = &maxInt
+				evmDefault.ChainConfig.VerkleTime = &maxInt
 				suite.Require().NoError(suite.network.App.EvmKeeper.SetParams(suite.network.GetContext(), evmDefault))
 			},
 			true,
