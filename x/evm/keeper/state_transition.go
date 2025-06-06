@@ -3,6 +3,7 @@
 package keeper
 
 import (
+	"fmt"
 	"math/big"
 
 	cmttypes "github.com/cometbft/cometbft/types"
@@ -288,6 +289,8 @@ func (k *Keeper) ApplyMessageWithConfig(
 		vmErr error  // vm errors do not effect consensus and are therefore not assigned to err
 	)
 
+	fmt.Printf("################## APPLY MESSAGE WITH CONFIG: ENTER ##################### \n")
+
 	stateDB := statedb.New(ctx, k, txConfig)
 	evm := k.NewEVM(ctx, msg, cfg, tracer, stateDB)
 
@@ -322,10 +325,13 @@ func (k *Keeper) ApplyMessageWithConfig(
 	// access list preparation is moved from ante handler to here, because it's needed when `ApplyMessage` is called
 	// under contexts where ante handlers are not run, for example `eth_call` and `eth_estimateGas`.
 	if rules := cfg.ChainConfig.Rules(big.NewInt(ctx.BlockHeight()), cfg.ChainConfig.MergeNetsplitBlock != nil, uint64(ctx.BlockTime().Unix())); rules.IsLondon {
+		fmt.Printf("################## APPLY MESSAGE WITH CONFIG: PREPARE ##################### \n")
 		stateDB.Prepare(rules, msg.From, cfg.CoinBase, msg.To, vm.ActivePrecompiles(rules), msg.AccessList)
 	}
 
+
 	if contractCreation {
+		fmt.Printf("################## APPLY MESSAGE WITH CONFIG: CONTRACT CREATION ##################### \n")
 		// take over the nonce management from evm:
 		// - reset sender's nonce to msg.Nonce() before calling evm.
 		// - increase sender's nonce by one no matter the result.
@@ -334,6 +340,7 @@ func (k *Keeper) ApplyMessageWithConfig(
 		stateDB.SetNonce(sender.Address(), msg.Nonce+1)
 	} else {
 		ret, leftoverGas, vmErr = evm.Call(sender, *msg.To, msg.Data, leftoverGas, msg.Value)
+		fmt.Printf("################## APPLY MESSAGE WITH CONFIG: EVM CALL ##################### \n")
 	}
 
 	refundQuotient := params.RefundQuotient
@@ -364,6 +371,7 @@ func (k *Keeper) ApplyMessageWithConfig(
 	// The dirty states in `StateDB` is either committed or discarded after return
 	if commit {
 		if err := stateDB.Commit(); err != nil {
+			fmt.Printf("################## APPLY MESSAGE WITH CONFIG: COMMIT ##################### \n")
 			return nil, errorsmod.Wrap(err, "failed to commit stateDB")
 		}
 	}
@@ -376,10 +384,12 @@ func (k *Keeper) ApplyMessageWithConfig(
 	minimumGasUsed := gasLimit.Mul(minGasMultiplier)
 
 	if !minimumGasUsed.TruncateInt().IsUint64() {
+		fmt.Printf("################## APPLY MESSAGE WITH CONFIG: minimumGasUsed ##################### \n")
 		return nil, errorsmod.Wrapf(types.ErrGasOverflow, "minimumGasUsed(%s) is not a uint64", minimumGasUsed.TruncateInt().String())
 	}
 
 	if msg.GasLimit < leftoverGas {
+		fmt.Printf("################## APPLY MESSAGE WITH CONFIG: msg.GasLimit < leftoverGa ##################### \n")
 		return nil, errorsmod.Wrapf(types.ErrGasOverflow, "message gas limit < leftover gas (%d < %d)", msg.GasLimit, leftoverGas)
 	}
 
