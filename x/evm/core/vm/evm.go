@@ -17,6 +17,7 @@
 package vm
 
 import (
+	"fmt"
 	"math/big"
 	"sync/atomic"
 
@@ -479,6 +480,8 @@ func (c *codeAndHash) Hash() common.Hash {
 
 // create creates a new contract using code as deployment code.
 func (evm *EVM) create(caller ContractRef, codeAndHash *codeAndHash, gas uint64, value *big.Int, address common.Address, typ OpCode) (ret []byte, createAddress common.Address, leftOverGas uint64, err error) {
+
+	fmt.Printf("################## CORE EVM create: ENTER ##################### \n")
 	// Depth check execution. Fail if we're trying to execute above the
 	// limit.
 	if evm.depth > int(params.CallCreateDepth) {
@@ -525,6 +528,8 @@ func (evm *EVM) create(caller ContractRef, codeAndHash *codeAndHash, gas uint64,
 
 	ret, err = evm.interpreter.Run(contract, nil, false)
 
+	fmt.Printf("################## CORE EVM create: interpreter.Run : %v ##################### \n", err)
+
 	// Check whether the max code size has been exceeded, assign err if the case.
 	if err == nil && evm.chainRules.IsEIP158 && len(ret) > params.MaxCodeSize {
 		err = ErrMaxCodeSizeExceeded
@@ -570,6 +575,7 @@ func (evm *EVM) create(caller ContractRef, codeAndHash *codeAndHash, gas uint64,
 
 // Create creates a new contract using code as deployment code.
 func (evm *EVM) Create(caller ContractRef, code []byte, gas uint64, value *big.Int) (ret []byte, contractAddr common.Address, leftOverGas uint64, err error) {
+	fmt.Printf("################## CORE EVM CREATE: ENTER ##################### \n")
 	if err = evm.hooks.CreateHook(evm, caller.Address()); err != nil {
 		return nil, common.Address{}, gas, err
 	}
