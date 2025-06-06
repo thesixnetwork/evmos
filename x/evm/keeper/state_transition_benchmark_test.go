@@ -152,9 +152,7 @@ func newNativeMessage(
 		return core.Message{}, err
 	}
 
-	ethTx := msg.AsTransaction()
-
-	m, err := msg.AsMessage(ethTx, msgSigner, baseFee)
+	m, err := msg.AsMessage(msgSigner, baseFee)
 	if err != nil {
 		return core.Message{}, err
 	}

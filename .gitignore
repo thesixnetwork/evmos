@@ -84,4 +84,6 @@ dependency-graph.png
 # OpenZeppelin contracts
 contracts/@openzeppelin/*
 
+logs/*
+
 dist/

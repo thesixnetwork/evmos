@@ -79,7 +79,7 @@ func (suite *EvmAnteTestSuite) TestCanTransfer() {
 			msg.From = senderKey.Addr.String()
 			signMsg, err := txFactory.SignMsgEthereumTx(senderKey.Priv, *msg)
 			suite.Require().NoError(err)
-			coreMsg, err := signMsg.AsMessage(msg.AsTransaction(), signer, baseFeeResp.BaseFee.BigInt())
+			coreMsg, err := signMsg.AsMessage(signer, baseFeeResp.BaseFee.BigInt())
 			suite.Require().NoError(err)
 
 			// Function under test

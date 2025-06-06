@@ -438,7 +438,7 @@ func (s *PrecompileTestSuite) TestRun() {
 			delegator := s.keyring.GetKey(0)
 			grantee := s.keyring.GetKey(1)
 
-			contract := vm.NewContract(vm.AccountRef(delegator.Addr), s.precompile, big.NewInt(0), tc.gas)
+			contract := vm.NewPrecompile(vm.AccountRef(delegator.Addr), s.precompile, big.NewInt(0), tc.gas)
 			contractAddr := contract.Address()
 
 			// malleate testcase

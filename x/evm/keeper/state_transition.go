@@ -52,7 +52,7 @@ func (k *Keeper) NewEVM(
 		Random:      nil, // not supported
 	}
 
-	txCtx := core.NewEVMTxContext(&msg)
+	txCtx := evmoscore.NewEVMTxContext(&msg)
 	if tracer == nil {
 		tracer = k.Tracer(ctx, msg, cfg.ChainConfig)
 	}
@@ -71,7 +71,7 @@ func (k *Keeper) NewEVM(
 		k.GetPrecompilesCallHook(ctx),
 	)
 
-	return vm.NewEVM(blockCtx, vm.TxContext(txCtx), stateDB, cfg.ChainConfig, vmConfig)
+	return vm.NewEVMWithHooks(evmHooks, blockCtx, txCtx, stateDB, cfg.ChainConfig, vmConfig)
 }
 
 // GetHashFn implements vm.GetHashFunc for Ethermint. It handles 3 cases:

@@ -218,7 +218,7 @@ func (s *PrecompileTestSuite) TestRun() {
 			// malleate testcase
 			caller, input := tc.malleate()
 
-			contract := vm.NewContract(vm.AccountRef(caller), s.precompile, big.NewInt(0), uint64(1e6))
+			contract := vm.NewPrecompile(vm.AccountRef(caller), s.precompile, big.NewInt(0), uint64(1e6))
 			contract.Input = input
 
 			contractAddr := contract.Address()
@@ -247,7 +247,7 @@ func (s *PrecompileTestSuite) TestRun() {
 
 			ethChainID := s.network.GetEIP155ChainID()
 			signer := gethtypes.LatestSignerForChainID(ethChainID)
-			msg, err := signedMsg.AsMessage(msgEthereumTx.AsTransaction(), signer, baseFee)
+			msg, err := signedMsg.AsMessage(signer, baseFee)
 			s.Require().NoError(err, "failed to instantiate Ethereum message")
 
 			// Instantiate EVM

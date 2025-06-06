@@ -76,10 +76,34 @@ func (s *StateDB) HasSelfDestructed(common.Address) bool {
 	panic("unimplemented")
 }
 
-// Prepare implements vm.StateDB.
-func (s *StateDB) Prepare(rules params.Rules, sender common.Address, coinbase common.Address, dest *common.Address, precompiles []common.Address, txAccesses ethtypes.AccessList) {
-	panic("unimplemented")
+func (s *StateDB) Prepare(rules params.Rules, sender, coinbase common.Address, dst *common.Address, precompiles []common.Address, list ethtypes.AccessList) {
+	if rules.IsBerlin {
+		// Clear out any leftover from previous executions
+		al := newAccessList()
+		s.accessList = al
+
+		al.AddAddress(sender)
+		if dst != nil {
+			al.AddAddress(*dst)
+			// If it's a create-tx, the destination will be added inside evm.create
+		}
+		for _, addr := range precompiles {
+			al.AddAddress(addr)
+		}
+		for _, el := range list {
+			al.AddAddress(el.Address)
+			for _, key := range el.StorageKeys {
+				al.AddSlot(el.Address, key)
+			}
+		}
+		if rules.IsShanghai { // EIP-3651: warm coinbase
+			al.AddAddress(coinbase)
+		}
+	}
+	// Reset transient storage at the beginning of transaction execution
+	// s.transientStorage = newTransientStorage()
 }
+
 
 // SelfDestruct implements vm.StateDB.
 func (s *StateDB) SelfDestruct(common.Address) {

@@ -68,7 +68,7 @@ func (s *PrecompileTestSuite) TestVoteEvent() {
 		stDB = s.network.GetStateDB()
 		ctx = s.network.GetContext()
 
-		contract := vm.NewContract(vm.AccountRef(s.keyring.GetAddr(0)), s.precompile, big.NewInt(0), tc.gas)
+		contract := vm.NewPrecompile(vm.AccountRef(s.keyring.GetAddr(0)), s.precompile, big.NewInt(0), tc.gas)
 		ctx = ctx.WithGasMeter(storetypes.NewInfiniteGasMeter())
 		initialGas := ctx.GasMeter().GasConsumed()
 		s.Require().Zero(initialGas)
@@ -143,7 +143,7 @@ func (s *PrecompileTestSuite) TestVoteWeightedEvent() {
 			stDB = s.network.GetStateDB()
 			ctx = s.network.GetContext()
 
-			contract := vm.NewContract(vm.AccountRef(s.keyring.GetAddr(0)), s.precompile, big.NewInt(0), tc.gas)
+			contract := vm.NewPrecompile(vm.AccountRef(s.keyring.GetAddr(0)), s.precompile, big.NewInt(0), tc.gas)
 			ctx = ctx.WithGasMeter(storetypes.NewInfiniteGasMeter())
 			initialGas := ctx.GasMeter().GasConsumed()
 			s.Require().Zero(initialGas)

@@ -474,7 +474,7 @@ func (k Keeper) TraceTx(c context.Context, req *types.QueryTraceTxRequest) (*typ
 
 	for i, tx := range req.Predecessors {
 		ethTx := tx.AsTransaction()
-		msg, err := tx.AsMessage(ethTx, signer, cfg.BaseFee)
+		msg, err := tx.AsMessage(signer, cfg.BaseFee)
 		if err != nil {
 			continue
 		}

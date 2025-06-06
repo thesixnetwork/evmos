@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core"
 	"github.com/evmos/evmos/v20/x/evm/core/vm"
 )
 
@@ -17,4 +18,16 @@ func CanTransfer(db vm.StateDB, addr common.Address, amount *big.Int) bool {
 func Transfer(db vm.StateDB, sender, recipient common.Address, amount *big.Int) {
 	db.SubBalance(sender, amount)
 	db.AddBalance(recipient, amount)
+}
+
+func NewEVMTxContext(msg *core.Message) vm.TxContext {
+	ctx := vm.TxContext{
+		Origin:     msg.From,
+		GasPrice:   new(big.Int).Set(msg.GasPrice),
+		BlobHashes: msg.BlobHashes,
+	}
+	if msg.BlobGasFeeCap != nil {
+		ctx.BlobFeeCap = new(big.Int).Set(msg.BlobGasFeeCap)
+	}
+	return ctx
 }

@@ -51,7 +51,7 @@ func (s *PrecompileTestSuite) TestNewPrecompile() {
 
 // TestRun tests the precompile's Run method.
 func (s *PrecompileTestSuite) TestRun() {
-	contract := vm.NewContract(
+	contract := vm.NewPrecompile(
 		vm.AccountRef(s.keyring.GetAddr(0)),
 		s.precompile,
 		big.NewInt(0),

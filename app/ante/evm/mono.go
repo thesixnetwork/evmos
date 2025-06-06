@@ -12,7 +12,6 @@ import (
 	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
 	txtypes "github.com/cosmos/cosmos-sdk/types/tx"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
 	anteutils "github.com/evmos/evmos/v20/app/ante/utils"
@@ -116,9 +115,6 @@ func NewMonoDecoratorUtils(
 // AnteHandle handles the entire decorator chain using a mono decorator.
 func (md MonoDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, next sdk.AnteHandler) (newCtx sdk.Context, err error) {
 	accountExpenses := make(map[string]*EthVestingExpenseTracker)
-	params := md.evmKeeper.GetParams(ctx)
-	ethCfg := params.ChainConfig.EthereumConfig(md.evmKeeper.ChainID())
-	signer := ethtypes.MakeSigner(ethCfg, big.NewInt(ctx.BlockHeight()), uint64(ctx.BlockTime().Unix()))
 
 	var txFeeInfo *txtypes.Fee
 	if !ctx.IsReCheckTx() {
@@ -210,31 +206,13 @@ func (md MonoDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, ne
 			return ctx, err
 		}
 
-		msgEthTx := ethMsg.AsTransaction()
-
-		sender, err := signer.Sender(msgEthTx)
+		// 7. can transfer
+		coreMsg, err := ethMsg.AsMessage(decUtils.Signer, decUtils.BaseFee)
 		if err != nil {
 			return ctx, errorsmod.Wrapf(
 				err,
-				"failed to create an ethereum core.Message from signer %T", signer,
+				"failed to create an ethereum core.Message from signer %T", decUtils.Signer,
 			)
-		}
-
-		// coreMsg, err := msgEthTx.AsMessage(msg, signer, baseFee)
-		coreMsg := core.Message{
-			To:                msgEthTx.To(),
-			From:              sender,
-			Nonce:             msgEthTx.Nonce(),
-			Value:             msgEthTx.Value(),
-			GasLimit:          msgEthTx.Gas(),
-			GasPrice:          msgEthTx.GasPrice(),
-			GasFeeCap:         msgEthTx.GasFeeCap(),
-			GasTipCap:         msgEthTx.GasTipCap(),
-			Data:              msgEthTx.Data(),
-			AccessList:        msgEthTx.AccessList(),
-			BlobHashes:        msgEthTx.BlobHashes(),
-			BlobGasFeeCap:     msgEthTx.BlobGasFeeCap(),
-			SkipAccountChecks: false,
 		}
 
 		if err := CanTransfer(

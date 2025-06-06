@@ -232,7 +232,7 @@ func validateBool(i interface{}) error {
 }
 
 func validateEIPs(i interface{}) error {
-	eips, ok := i.([]int)
+	eips, ok := i.([]int32)
 	if !ok {
 		return fmt.Errorf("invalid EIP slice type: %T", i)
 	}
@@ -240,18 +240,18 @@ func validateEIPs(i interface{}) error {
 	uniqueEIPs := make(map[int]struct{})
 
 	for _, eip := range eips {
-		if !vm.ExistsEipActivator(eip) {
+		if !vm.ExistsEipActivator(int(eip)) {
 			return fmt.Errorf("EIP %v is not activateable, valid EIPs are: %s", eip, vm.ActivateableEips())
 		}
 
-		if !vm.ValidEip(eip) {
+		if !vm.ValidEip(int(eip)) {
 			return fmt.Errorf("EIP %v number is not valid", eip)
 		}
 
-		if _, ok := uniqueEIPs[eip]; ok {
+		if _, ok := uniqueEIPs[int(eip)]; ok {
 			return fmt.Errorf("found duplicate EIP: %v", eip)
 		}
-		uniqueEIPs[eip] = struct{}{}
+		uniqueEIPs[int(eip)] = struct{}{}
 
 	}
 

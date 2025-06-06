@@ -122,13 +122,7 @@ func (tf *IntegrationTxFactory) GenerateGethCoreMsg(
 	signer := gethtypes.LatestSignerForChainID(
 		tf.network.GetEIP155ChainID(),
 	)
-
-	_, err = signer.Sender(msg.AsTransaction())
-	if err != nil {
-		return core.Message{}, errorsmod.Wrap(err, "failed to create an ethereum core.Message from signer")
-	}
-
-	return signedMsg.AsMessage(msg.AsTransaction(), signer, baseFeeResp.BaseFee.BigInt())
+	return signedMsg.AsMessage(signer, baseFeeResp.BaseFee.BigInt())
 }
 
 // GenerateContractCallArgs generates the txArgs for a contract call.
