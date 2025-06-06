@@ -38,10 +38,10 @@ func (cc ChainConfig) EthereumConfig(chainID *big.Int) *params.ChainConfig {
 		TerminalTotalDifficulty:       nil,
 		Ethash:                        nil,
 		Clique:                        nil,
-		ShanghaiTime:                  getUpgradeTimestamp(cc.ShanghaiTime.Int64()),
-		CancunTime:                    getUpgradeTimestamp(cc.CancunTime.Int64()),
-		PragueTime:                    getUpgradeTimestamp(cc.PragueTime.Int64()),
-		VerkleTime:                    getUpgradeTimestamp(cc.VerkleTime.Int64()),
+		ShanghaiTime:                  getUpgradeTimestamp(0),
+		CancunTime:                    getUpgradeTimestamp(0),
+		PragueTime:                    getUpgradeTimestamp(0),
+		VerkleTime:                    getUpgradeTimestamp(-1),
 		TerminalTotalDifficultyPassed: false,
 		IsDevMode:                     false,
 	}
@@ -65,10 +65,10 @@ func DefaultChainConfig() ChainConfig {
 	grayGlacierBlock := sdkmath.ZeroInt()
 	mergeNetsplitBlock := sdkmath.ZeroInt()
 
-	shanghaiTime := sdkmath.ZeroInt()
-	cancunTime := sdkmath.ZeroInt()
-	praqueTime := sdkmath.ZeroInt()
-	verkleTime := sdkmath.ZeroInt()
+	shanghaiTime := sdkmath.NewInt(-1)
+	cancunTime := sdkmath.NewInt(-1)
+	praqueTime := sdkmath.NewInt(-1)
+	verkleTime := sdkmath.NewInt(-1)
 
 	return ChainConfig{
 		HomesteadBlock:      &homesteadBlock,
