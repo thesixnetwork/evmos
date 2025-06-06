@@ -3,7 +3,6 @@
 package keeper
 
 import (
-	"fmt"
 	"math/big"
 
 	cmttypes "github.com/cometbft/cometbft/types"
@@ -326,9 +325,6 @@ func (k *Keeper) ApplyMessageWithConfig(
 	if rules := cfg.ChainConfig.Rules(big.NewInt(ctx.BlockHeight()), cfg.ChainConfig.MergeNetsplitBlock != nil, uint64(ctx.BlockTime().Unix())); rules.IsLondon {
 		stateDB.Prepare(rules, msg.From, cfg.CoinBase, msg.To, vm.ActivePrecompiles(rules), msg.AccessList)
 	}
-	
-	fmt.Printf("############################# RULES: %v ########################## \n", cfg.ChainConfig.Rules(big.NewInt(ctx.BlockHeight()), cfg.ChainConfig.MergeNetsplitBlock != nil, uint64(ctx.BlockTime().Unix())))
-
 
 	if contractCreation {
 		// take over the nonce management from evm:
