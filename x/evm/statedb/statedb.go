@@ -62,62 +62,14 @@ type StateDB struct {
 	// Per-transaction access list
 	accessList *accessList
 
+	// Transient storage
+	transientStorage transientStorage
+
+	// Preimages occurred seen by VM in the scope of block.
+	preimages map[common.Hash][]byte
+
 	// The count of calls to precompiles
 	precompileCallsCounter uint8
-}
-
-// GetTransientState implements vm.StateDB.
-func (s *StateDB) GetTransientState(addr common.Address, key common.Hash) common.Hash {
-	panic("unimplemented")
-}
-
-// HasSelfDestructed implements vm.StateDB.
-func (s *StateDB) HasSelfDestructed(common.Address) bool {
-	panic("unimplemented")
-}
-
-func (s *StateDB) Prepare(rules params.Rules, sender, coinbase common.Address, dst *common.Address, precompiles []common.Address, list ethtypes.AccessList) {
-	if rules.IsBerlin {
-		// Clear out any leftover from previous executions
-		al := newAccessList()
-		s.accessList = al
-
-		al.AddAddress(sender)
-		if dst != nil {
-			al.AddAddress(*dst)
-			// If it's a create-tx, the destination will be added inside evm.create
-		}
-		for _, addr := range precompiles {
-			al.AddAddress(addr)
-		}
-		for _, el := range list {
-			al.AddAddress(el.Address)
-			for _, key := range el.StorageKeys {
-				al.AddSlot(el.Address, key)
-			}
-		}
-		if rules.IsShanghai { // EIP-3651: warm coinbase
-			al.AddAddress(coinbase)
-		}
-	}
-	// Reset transient storage at the beginning of transaction execution
-	// s.transientStorage = newTransientStorage()
-}
-
-
-// SelfDestruct implements vm.StateDB.
-func (s *StateDB) SelfDestruct(common.Address) {
-	panic("unimplemented")
-}
-
-// Selfdestruct6780 implements vm.StateDB.
-func (s *StateDB) Selfdestruct6780(common.Address) {
-	panic("unimplemented")
-}
-
-// SetTransientState implements vm.StateDB.
-func (s *StateDB) SetTransientState(addr common.Address, key common.Hash, value common.Hash) {
-	panic("unimplemented")
 }
 
 // New creates a new state from a given trie.
@@ -128,8 +80,7 @@ func New(ctx sdk.Context, keeper Keeper, txConfig TxConfig) *StateDB {
 		stateObjects: make(map[common.Address]*stateObject),
 		journal:      newJournal(),
 		accessList:   newAccessList(),
-
-		txConfig: txConfig,
+		txConfig:     txConfig,
 	}
 }
 
@@ -293,11 +244,10 @@ func (s *StateDB) GetRefund() uint64 {
 	return s.refund
 }
 
-// HasSuicided returns if the contract is suicided in current transaction.
-func (s *StateDB) HasSuicided(addr common.Address) bool {
+func (s *StateDB) HasSelfDestructed(addr common.Address) bool {
 	stateObject := s.getStateObject(addr)
 	if stateObject != nil {
-		return stateObject.suicided
+		return stateObject.selfDestructed
 	}
 	return false
 }
@@ -452,51 +402,123 @@ func (s *StateDB) SetState(addr common.Address, key, value common.Hash) {
 	}
 }
 
-// Suicide marks the given account as suicided.
+// SetStorage replaces the entire storage for the specified account with given
+// storage. This function should only be used for debugging and the mutations
+// must be discarded afterwards.
+func (s *StateDB) SetStorage(addr common.Address, storage map[common.Hash]common.Hash) {
+	// SetStorage needs to wipe existing storage. We achieve this by pretending
+	// that the account self-destructed earlier in this block, by flagging
+	// it in stateObjectsDestruct. The effect of doing so is that storage lookups
+	// will not hit disk, since it is assumed that the disk-data is belonging
+	// to a previous incarnation of the object.
+	//
+	// TODO(rjl493456442) this function should only be supported by 'unwritable'
+	// state and all mutations made should all be discarded afterwards.
+	// if _, ok := s.stateObjectsDestruct[addr]; !ok {
+	// 	s.stateObjectsDestruct[addr] = nil
+	// }
+	stateObject := s.getOrNewStateObject(addr)
+	for k, v := range storage {
+		stateObject.SetState(k, v)
+	}
+}
+
+// SelfDestruct marks the given account as selfdestructed.
 // This clears the account balance.
 //
 // The account's state object is still available until the state is committed,
-// getStateObject will return a non-nil account after Suicide.
-func (s *StateDB) Suicide(addr common.Address) bool {
+// getStateObject will return a non-nil account after SelfDestruct.
+func (s *StateDB) SelfDestruct(addr common.Address) {
 	stateObject := s.getStateObject(addr)
 	if stateObject == nil {
-		return false
+		return
 	}
-	s.journal.append(suicideChange{
+	s.journal.append(selfDestructChange{
 		account:     &addr,
-		prev:        stateObject.suicided,
+		prev:        stateObject.selfDestructed,
 		prevbalance: new(big.Int).Set(stateObject.Balance()),
 	})
-	stateObject.markSuicided()
+	stateObject.markSelfdestructed()
 	stateObject.account.Balance = new(big.Int)
-
-	return true
 }
 
-// PrepareAccessList handles the preparatory steps for executing a state transition with
-// regards to both EIP-2929 and EIP-2930:
+func (s *StateDB) Selfdestruct6780(addr common.Address) {
+	stateObject := s.getStateObject(addr)
+	if stateObject == nil {
+		return
+	}
+
+	if stateObject.created {
+		s.SelfDestruct(addr)
+	}
+}
+
+// SetTransientState sets transient storage for a given account. It
+// adds the change to the journal so that it can be rolled back
+// to its previous value if there is a revert.
+func (s *StateDB) SetTransientState(addr common.Address, key, value common.Hash) {
+	prev := s.GetTransientState(addr, key)
+	if prev == value {
+		return
+	}
+	s.journal.append(transientStorageChange{
+		account:  &addr,
+		key:      key,
+		prevalue: prev,
+	})
+	s.setTransientState(addr, key, value)
+}
+
+// setTransientState is a lower level setter for transient storage. It
+// is called during a revert to prevent modifications to the journal.
+func (s *StateDB) setTransientState(addr common.Address, key, value common.Hash) {
+	s.transientStorage.Set(addr, key, value)
+}
+
+// GetTransientState gets transient storage for a given account.
+func (s *StateDB) GetTransientState(addr common.Address, key common.Hash) common.Hash {
+	return s.transientStorage.Get(addr, key)
+}
+
+// Prepare handles the preparatory steps for executing a state transition with.
+// This method must be invoked before state transition.
 //
+// Berlin fork:
 // - Add sender to access list (2929)
 // - Add destination to access list (2929)
 // - Add precompiles to access list (2929)
 // - Add the contents of the optional tx access list (2930)
 //
-// This method should only be called if Yolov3/Berlin/2929+2930 is applicable at the current number.
-func (s *StateDB) PrepareAccessList(sender common.Address, dst *common.Address, precompiles []common.Address, list ethtypes.AccessList) {
-	s.AddAddressToAccessList(sender)
-	if dst != nil {
-		s.AddAddressToAccessList(*dst)
-		// If it's a create-tx, the destination will be added inside evm.create
-	}
-	for _, addr := range precompiles {
-		s.AddAddressToAccessList(addr)
-	}
-	for _, el := range list {
-		s.AddAddressToAccessList(el.Address)
-		for _, key := range el.StorageKeys {
-			s.AddSlotToAccessList(el.Address, key)
+// Potential EIPs:
+// - Reset access list (Berlin)
+// - Add coinbase to access list (EIP-3651)
+// - Reset transient storage (EIP-1153)
+func (s *StateDB) Prepare(rules params.Rules, sender, coinbase common.Address, dst *common.Address, precompiles []common.Address, list ethtypes.AccessList) {
+	if rules.IsBerlin {
+		// Clear out any leftover from previous executions
+		al := newAccessList()
+		s.accessList = al
+
+		al.AddAddress(sender)
+		if dst != nil {
+			al.AddAddress(*dst)
+			// If it's a create-tx, the destination will be added inside evm.create
+		}
+		for _, addr := range precompiles {
+			al.AddAddress(addr)
+		}
+		for _, el := range list {
+			al.AddAddress(el.Address)
+			for _, key := range el.StorageKeys {
+				al.AddSlot(el.Address, key)
+			}
+		}
+		if rules.IsShanghai { // EIP-3651: warm coinbase
+			al.AddAddress(coinbase)
 		}
 	}
+	// Reset transient storage at the beginning of transaction execution
+	s.transientStorage = newTransientStorage()
 }
 
 // AddAddressToAccessList adds the given address to the access list
@@ -554,7 +576,7 @@ func (s *StateDB) RevertToSnapshot(revid int) {
 	snapshot := s.validRevisions[idx].journalIndex
 
 	// Replay the journal to undo changes and remove invalidated snapshots
-	s.journal.Revert(s, snapshot)
+	s.journal.revert(s, snapshot)
 	s.validRevisions = s.validRevisions[:idx]
 }
 
@@ -581,20 +603,33 @@ func (s *StateDB) CommitWithCacheCtx() error {
 func (s *StateDB) commitWithCtx(ctx sdk.Context) error {
 	for _, addr := range s.journal.sortedDirties() {
 		obj := s.stateObjects[addr]
-		if obj.suicided {
-			if err := s.keeper.DeleteAccount(ctx, obj.Address()); err != nil {
-				return errorsmod.Wrapf(err, "failed to delete account %s", obj.Address())
+		if obj.selfDestructed {
+			if err := s.keeper.DeleteAccount(s.ctx, obj.Address()); err != nil {
+				return errorsmod.Wrap(err, "failed to delete account")
 			}
 		} else {
 			if obj.code != nil && obj.dirtyCode {
-				s.keeper.SetCode(ctx, obj.CodeHash(), obj.code)
+				s.keeper.SetCode(s.ctx, obj.CodeHash(), obj.code)
 			}
-			if err := s.keeper.SetAccount(ctx, obj.Address(), obj.account); err != nil {
+			if err := s.keeper.SetAccount(s.ctx, obj.Address(), obj.account); err != nil {
 				return errorsmod.Wrap(err, "failed to set account")
 			}
 			for _, key := range obj.dirtyStorage.SortedKeys() {
-				valueBytes := obj.dirtyStorage[key].Bytes()
-				s.keeper.SetState(ctx, obj.Address(), key, valueBytes)
+				dirtyValue := obj.dirtyStorage[key]
+				originValue := obj.originStorage[key]
+				// Skip noop changes, persist actual changes
+				transientStorageValue, ok := obj.db.transientStorage[addr][key]
+				if (ok && transientStorageValue == dirtyValue) ||
+					(!ok && dirtyValue == originValue) {
+					continue
+				}
+				s.keeper.SetState(s.ctx, obj.Address(), key, dirtyValue.Bytes())
+
+				// Update the pendingStorage cache to the new value.
+				// This is specially needed for precompiles calls where
+				// multiple Commits calls are done within the same transaction
+				// for the appropriate changes to be committed.
+				obj.db.transientStorage[addr][key] = dirtyValue
 			}
 		}
 	}

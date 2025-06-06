@@ -63,8 +63,7 @@ func (suite *StateDBTestSuite) TestAccount() {
 		}},
 		{"suicide", func(db *statedb.StateDB) {
 			// non-exist account.
-			suite.Require().False(db.Suicide(address))
-			suite.Require().False(db.HasSuicided(address))
+			suite.Require().False(db.HasSelfDestructed(address))
 
 			// create a contract account
 			db.CreateAccount(address)
@@ -76,11 +75,11 @@ func (suite *StateDBTestSuite) TestAccount() {
 
 			// suicide
 			db = statedb.New(sdk.Context{}, db.Keeper(), emptyTxConfig)
-			suite.Require().False(db.HasSuicided(address))
-			suite.Require().True(db.Suicide(address))
+			db.SelfDestruct(address)
+			suite.Require().True(db.HasSelfDestructed(address))
 
 			// check dirty state
-			suite.Require().True(db.HasSuicided(address))
+			suite.Require().True(db.HasSelfDestructed(address))
 			// balance is cleared
 			suite.Require().Equal(big.NewInt(0), db.GetBalance(address))
 			// but code and state are still accessible in dirty state

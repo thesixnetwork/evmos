@@ -4,6 +4,8 @@ package statedb
 
 import (
 	"bytes"
+	"fmt"
+	"io"
 	"math/big"
 	"sort"
 
@@ -11,6 +13,8 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/rlp"
+	evmostypes "github.com/evmos/evmos/v20/types"
 )
 
 var emptyCodeHash = crypto.Keccak256(nil)
@@ -29,6 +33,18 @@ func NewEmptyAccount() *Account {
 		Balance:  new(big.Int),
 		CodeHash: emptyCodeHash,
 	}
+}
+
+// NewAccountFromSdkAccount extracts the nonce and code hash from the provided SDK account.
+func NewAccountFromSdkAccount(acct sdk.AccountI) *Account {
+	acc := NewEmptyAccount()
+	acc.Nonce = acct.GetSequence()
+
+	if ethAcct, ok := acct.(evmostypes.EthAccountI); ok {
+		acc.CodeHash = ethAcct.GetCodeHash().Bytes()
+	}
+
+	return acc
 }
 
 // IsContract returns if the account contains contract code.
@@ -51,22 +67,48 @@ func (s Storage) SortedKeys() []common.Hash {
 	return keys
 }
 
+type Code []byte
+
+func (c Code) String() string {
+	return string(c)
+}
+
+func (s Storage) String() (str string) {
+	for key, value := range s {
+		str += fmt.Sprintf("%X : %X\n", key, value)
+	}
+	return
+}
+
+func (s Storage) Copy() Storage {
+	cpy := make(Storage, len(s))
+	for key, value := range s {
+		cpy[key] = value
+	}
+	return cpy
+}
+
 // stateObject is the state of an account
 type stateObject struct {
 	db *StateDB
 
 	account Account
-	code    []byte
+	code    Code
 
 	// state storage
 	originStorage Storage
 	dirtyStorage  Storage
+	// overridden state, when not nil, replace the whole committed state,
+	// mainly to support the stateOverrides in eth_call.
+	overrideStorage Storage
 
 	address common.Address
 
 	// flags
-	dirtyCode bool
-	suicided  bool
+	dirtyCode      bool
+	selfDestructed bool
+
+	created       bool
 }
 
 // newObject creates a state object.
@@ -91,8 +133,24 @@ func (s *stateObject) empty() bool {
 	return s.account.Nonce == 0 && s.account.Balance.Sign() == 0 && bytes.Equal(s.account.CodeHash, emptyCodeHash)
 }
 
-func (s *stateObject) markSuicided() {
-	s.suicided = true
+// EncodeRLP implements rlp.Encoder.
+func (s *stateObject) EncodeRLP(w io.Writer) error {
+	return rlp.Encode(w, &s.account)
+}
+
+func (s *stateObject) markSelfdestructed() {
+	s.selfDestructed = true
+}
+
+func (s *stateObject) touch() {
+	s.db.journal.append(touchChange{
+		account: &s.address,
+	})
+	if s.address == ripemd {
+		// Explicitly put it in the dirty-cache, which is otherwise generated from
+		// flattened journals.
+		s.db.journal.dirty(s.address)
+	}
 }
 
 // AddBalance adds amount to s's balance.
@@ -246,4 +304,10 @@ func (s *stateObject) SetState(key common.Hash, value common.Hash) {
 
 func (s *stateObject) setState(key, value common.Hash) {
 	s.dirtyStorage[key] = value
+}
+
+func (s *stateObject) SetStorage(storage Storage) {
+	s.overrideStorage = storage
+	s.originStorage = make(Storage)
+	s.dirtyStorage = make(Storage)
 }
