@@ -62,8 +62,9 @@ const (
 
 // EVM flags
 const (
-	EVMTracer         = "evm.tracer"
-	EVMMaxTxGasWanted = "evm.max-tx-gas-wanted"
+	EVMTracer          = "evm.tracer"
+	EVMMaxTxGasWanted  = "evm.max-tx-gas-wanted"
+	EVMUnsafeOrderedTx = "evm.unsafe-unordered-tx"
 )
 
 // TLS flags

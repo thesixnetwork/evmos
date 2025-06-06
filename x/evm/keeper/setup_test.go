@@ -77,8 +77,10 @@ func (suite *KeeperTestSuite) SetupTest() {
 		evmGenesis.Params.ChainConfig.ArrowGlacierBlock = &maxInt
 		evmGenesis.Params.ChainConfig.GrayGlacierBlock = &maxInt
 		evmGenesis.Params.ChainConfig.MergeNetsplitBlock = &maxInt
-		evmGenesis.Params.ChainConfig.ShanghaiBlock = &maxInt
-		evmGenesis.Params.ChainConfig.CancunBlock = &maxInt
+		evmGenesis.Params.ChainConfig.ShanghaiTime = &maxInt
+		evmGenesis.Params.ChainConfig.CancunTime = &maxInt
+		evmGenesis.Params.ChainConfig.PragueTime = &maxInt
+		evmGenesis.Params.ChainConfig.VerkleTime = &maxInt
 		customGenesis[evmtypes.ModuleName] = evmGenesis
 	}
 
