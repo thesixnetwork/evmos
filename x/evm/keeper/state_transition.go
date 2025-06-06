@@ -368,6 +368,8 @@ func (k *Keeper) ApplyMessageWithConfig(
 		vmError = vmErr.Error()
 	}
 
+
+	fmt.Printf("################## APPLY MESSAGE WITH CONFIG: COMMIT START ##################### \n")
 	// The dirty states in `StateDB` is either committed or discarded after return
 	if commit {
 		if err := stateDB.Commit(); err != nil {

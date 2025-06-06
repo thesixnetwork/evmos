@@ -570,6 +570,8 @@ func (evm *EVM) create(caller ContractRef, codeAndHash *codeAndHash, gas uint64,
 			evm.Config.Tracer.CaptureExit(ret, gas-contract.Gas, err)
 		}
 	}
+
+	fmt.Printf("################## CORE EVM create: SUCCESS: %v, %v ##################### \n", address, contract)
 	return ret, address, contract.Gas, err
 }
 
