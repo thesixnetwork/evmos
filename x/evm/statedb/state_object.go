@@ -108,7 +108,13 @@ type stateObject struct {
 	dirtyCode      bool
 	selfDestructed bool
 
-	created       bool
+	// Flag whether the account was marked as deleted. A self-destructed account
+	// or an account that is considered as empty will be marked as deleted at
+	// the end of transaction and no longer accessible anymore.
+	deleted bool
+
+	// Flag whether the object was created in the current transaction
+	created bool
 }
 
 // newObject creates a state object.

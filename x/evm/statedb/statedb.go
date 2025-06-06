@@ -75,12 +75,14 @@ type StateDB struct {
 // New creates a new state from a given trie.
 func New(ctx sdk.Context, keeper Keeper, txConfig TxConfig) *StateDB {
 	return &StateDB{
-		keeper:       keeper,
-		ctx:          ctx,
-		stateObjects: make(map[common.Address]*stateObject),
-		journal:      newJournal(),
-		accessList:   newAccessList(),
-		txConfig:     txConfig,
+		keeper:           keeper,
+		ctx:              ctx,
+		stateObjects:     make(map[common.Address]*stateObject),
+		journal:          newJournal(),
+		accessList:       newAccessList(),
+		transientStorage: newTransientStorage(),
+		preimages:        make(map[common.Hash][]byte),
+		txConfig:         txConfig,
 	}
 }
 
@@ -601,8 +603,12 @@ func (s *StateDB) CommitWithCacheCtx() error {
 // commitWithCtx writes the dirty states to keeper
 // using the provided context
 func (s *StateDB) commitWithCtx(ctx sdk.Context) error {
-	for _, addr := range s.journal.sortedDirties() {
+	dirties := s.journal.sortedDirties()
+	for _, addr := range dirties {
 		obj := s.stateObjects[addr]
+		if obj == nil {
+			continue
+		}
 		if obj.selfDestructed {
 			if err := s.keeper.DeleteAccount(ctx, obj.Address()); err != nil {
 				return errorsmod.Wrap(err, "failed to delete account")
@@ -614,22 +620,21 @@ func (s *StateDB) commitWithCtx(ctx sdk.Context) error {
 			if err := s.keeper.SetAccount(ctx, obj.Address(), obj.account); err != nil {
 				return errorsmod.Wrap(err, "failed to set account")
 			}
-			for _, key := range obj.dirtyStorage.SortedKeys() {
+			storageKeys := obj.dirtyStorage.SortedKeys()
+			for _, key := range storageKeys {
 				dirtyValue := obj.dirtyStorage[key]
 				originValue := obj.originStorage[key]
-				// Skip noop changes, persist actual changes
 				transientStorageValue, ok := obj.db.transientStorage[addr][key]
-				if (ok && transientStorageValue == dirtyValue) ||
-					(!ok && dirtyValue == originValue) {
+				// Skip noop changes, persist actual changes
+				if (ok && transientStorageValue == dirtyValue) || (!ok && dirtyValue == originValue) {
 					continue
 				}
 				s.keeper.SetState(ctx, obj.Address(), key, dirtyValue.Bytes())
-
 				// Update the pendingStorage cache to the new value.
 				// This is specially needed for precompiles calls where
 				// multiple Commits calls are done within the same transaction
 				// for the appropriate changes to be committed.
-				obj.db.transientStorage[addr][key] = dirtyValue
+				s.SetTransientState(addr, key, dirtyValue)
 			}
 		}
 	}
