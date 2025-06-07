@@ -157,12 +157,14 @@ func (args *TransactionArgs) ToTransaction() *MsgEthereumTx {
 
 // ToMessage converts the arguments to the Message type used by the core evm.
 // This assumes that setTxDefaults has been called.
-func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (core.Message, error) {
+// ToMessage converts the transaction arguments to the Message type used by the
+// core evm. This method is used in calls and traces that do not require a real
+// live transaction.
+func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (*core.Message, error) {
 	// Reject invalid combinations of pre- and post-1559 fee styles
 	if args.GasPrice != nil && (args.MaxFeePerGas != nil || args.MaxPriorityFeePerGas != nil) {
-		return core.Message{}, errors.New("both gasPrice and (maxFeePerGas or maxPriorityFeePerGas) specified")
+		return nil, errors.New("both gasPrice and (maxFeePerGas or maxPriorityFeePerGas) specified")
 	}
-
 	// Set sender address or use zero address if none specified.
 	addr := args.GetFrom()
 
@@ -196,7 +198,7 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (c
 			gasPrice = args.GasPrice.ToInt()
 			gasFeeCap, gasTipCap = gasPrice, gasPrice
 		} else {
-			// User specified 1559 gas feilds (or none), use those
+			// User specified 1559 gas fields (or none), use those
 			gasFeeCap = new(big.Int)
 			if args.MaxFeePerGas != nil {
 				gasFeeCap = args.MaxFeePerGas.ToInt()
@@ -227,7 +229,7 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (c
 		nonce = uint64(*args.Nonce)
 	}
 
-	msg := core.Message{
+	msg := &core.Message{
 		To:                args.To,
 		From:              addr,
 		Nonce:             nonce,
@@ -238,9 +240,8 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (c
 		GasTipCap:         gasTipCap,
 		Data:              data,
 		AccessList:        accessList,
-		SkipAccountChecks: false,
+		SkipAccountChecks: true,
 	}
-
 	return msg, nil
 }
 

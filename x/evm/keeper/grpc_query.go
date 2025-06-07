@@ -252,7 +252,7 @@ func (k Keeper) EthCall(c context.Context, req *types.EthCallRequest) (*types.Ms
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash()))
 
 	// pass false to not commit StateDB
-	res, err := k.ApplyMessageWithConfig(ctx, msg, nil, false, cfg, txConfig, nil)
+	res, err := k.ApplyMessageWithConfig(ctx, *msg, nil, false, cfg, txConfig, nil)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -922,7 +922,7 @@ func (k Keeper) EthCallWithOverride(c context.Context, req *types.EthCallWithOve
 	rpcOverides := rpcrtypes.FromProtoStateOverride(req.Overrides)
 
 	// pass false to not commit StateDB
-	res, err := k.ApplyMessageWithConfig(ctx, msg, nil, false, cfg, txConfig, &rpcOverides)
+	res, err := k.ApplyMessageWithConfig(ctx, *msg, nil, false, cfg, txConfig, &rpcOverides)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
