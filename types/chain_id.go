@@ -42,6 +42,7 @@ func ParseChainID(chainID string) (*big.Int, error) {
 		return nil, errorsmod.Wrapf(ErrInvalidChainID, "chain-id '%s' cannot exceed 48 chars", chainID)
 	}
 
+	ChainIDTableModifier(&chainID)
 	matches := evmosChainID.FindStringSubmatch(chainID)
 	if matches == nil || len(matches) != 4 || matches[1] == "" {
 		return nil, errorsmod.Wrapf(ErrInvalidChainID, "%s: %v", chainID, matches)
