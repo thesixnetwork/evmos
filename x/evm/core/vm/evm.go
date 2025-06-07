@@ -114,13 +114,14 @@ type EVM struct {
 	Config Config
 	// global (to this context) ethereum virtual machine
 	// used throughout the execution of the tx.
-	interpreter *EVMInterpreter
+	interpreter Interpreter
 	// abort is used to abort the EVM calling operations
 	abort atomic.Bool
 	// callGasTemp holds the gas available for the current call. This is needed because the
 	// available gas is calculated in gasCall* according to the 63/64 rule and later
 	// applied in opCall*.
 	callGasTemp uint64
+
 	// precompiles defines the precompiled contracts used by the EVM
 	precompiles map[common.Address]PrecompiledContract
 	// activePrecompiles defines the precompiles that are currently active
@@ -153,11 +154,10 @@ func NewEVM(blockCtx BlockContext, txCtx TxContext, statedb StateDB, chainConfig
 		Config:      config,
 		chainConfig: chainConfig,
 		chainRules:  chainConfig.Rules(blockCtx.BlockNumber, blockCtx.Random != nil, blockCtx.Time),
-		hooks:       newNoopOpCodeHooks(),
 	}
-
 	// set the default precompiles
-	evm.activePrecompiles = ActivePrecompiles(evm.chainRules)
+	evm.activePrecompiles = DefaultActivePrecompiles(evm.chainRules)
+	evm.precompiles = DefaultPrecompiles(evm.chainRules)
 	evm.interpreter = NewEVMInterpreter(evm)
 	return evm
 }
@@ -175,19 +175,20 @@ func NewEVMWithHooks(hooks OpCodeHooks, blockCtx BlockContext, txCtx TxContext, 
 		hooks:       hooks,
 	}
 	// set the default precompiles
-	evm.activePrecompiles = ActivePrecompiles(evm.chainRules)
+	evm.activePrecompiles = DefaultActivePrecompiles(evm.chainRules)
+	evm.precompiles = DefaultPrecompiles(evm.chainRules)
 	evm.interpreter = NewEVMInterpreter(evm)
 
 	return evm
 }
 
-func (evm *EVM) GetInterpreter() *EVMInterpreter {
-	return evm.interpreter
-}
+// func (evm *EVM) GetInterpreter() *EVMInterpreter {
+// 	return evm.interpreter
+// }
 
-func (evm *EVM) SetInterpreter(i *EVMInterpreter) {
-	evm.interpreter = i
-}
+// func (evm *EVM) SetInterpreter(i *EVMInterpreter) {
+// 	evm.interpreter = i
+// }
 
 // Reset resets the EVM with a new transaction context.Reset
 // This is not threadsafe and should only be done very cautiously.
@@ -208,8 +209,13 @@ func (evm *EVM) Cancelled() bool {
 }
 
 // Interpreter returns the current interpreter
-func (evm *EVM) Interpreter() *EVMInterpreter {
+func (evm *EVM) Interpreter() Interpreter {
 	return evm.interpreter
+}
+
+// WithInterpreter sets the interpreter to the EVM instance
+func (evm *EVM) WithInterpreter(interpreter Interpreter) {
+	evm.interpreter = interpreter
 }
 
 // Call executes the contract associated with the addr with the given input as
@@ -230,7 +236,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		return nil, gas, ErrInsufficientBalance
 	}
 	snapshot := evm.StateDB.Snapshot()
-	p, isPrecompile := evm.precompile(addr)
+	p, isPrecompile := evm.Precompile(addr)
 	debug := evm.Config.Tracer != nil
 
 	if !evm.StateDB.Exist(addr) {
@@ -268,7 +274,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	}
 
 	if isPrecompile {
-		ret, gas, err = RunPrecompiledContract(p, evm, caller.Address(), caller.Address(), input, gas, value, evm.interpreter.readOnly)
+		ret, gas, err = evm.RunPrecompiledContract(p, caller, input, gas, value, evm.interpreter.(*EVMInterpreter).readOnly)
 	} else {
 		// Initialise a new contract and set the code that is to be used by the EVM.
 		// The contract is a scoped environment for this execution context only.
@@ -311,7 +317,6 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 	if err = evm.hooks.CallHook(evm, caller.Address(), addr); err != nil {
 		return nil, gas, err
 	}
-
 	// Fail if we're trying to execute above the call depth limit
 	if evm.depth > int(params.CallCreateDepth) {
 		return nil, gas, ErrDepth
@@ -323,7 +328,7 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 	if !evm.Context.CanTransfer(evm.StateDB, caller.Address(), value) {
 		return nil, gas, ErrInsufficientBalance
 	}
-	snapshot := evm.StateDB.Snapshot()
+	var snapshot = evm.StateDB.Snapshot()
 
 	// Invoke tracer hooks that signal entering/exiting a call frame
 	if evm.Config.Tracer != nil {
@@ -335,7 +340,7 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 
 	// It is allowed to call precompiles, even via delegatecall
 	if p, isPrecompile := evm.precompile(addr); isPrecompile {
-		ret, gas, err = RunPrecompiledContract(p, evm, caller.Address(), caller.Address(), input, gas, big0, evm.interpreter.readOnly)
+		ret, gas, err = evm.RunPrecompiledContract(p, caller, input, gas, value, evm.interpreter.(*EVMInterpreter).readOnly)
 	} else {
 		addrCopy := addr
 		// Initialise a new contract and set the code that is to be used by the EVM.
@@ -363,12 +368,11 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 	if err = evm.hooks.CallHook(evm, caller.Address(), addr); err != nil {
 		return nil, gas, err
 	}
-
 	// Fail if we're trying to execute above the call depth limit
 	if evm.depth > int(params.CallCreateDepth) {
 		return nil, gas, ErrDepth
 	}
-	snapshot := evm.StateDB.Snapshot()
+	var snapshot = evm.StateDB.Snapshot()
 
 	// Invoke tracer hooks that signal entering/exiting a call frame
 	if evm.Config.Tracer != nil {
@@ -387,7 +391,7 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 		// NOTE: caller must, at all times be a contract. It should never happen
 		// that caller is something other than a Contract.
 		parent := caller.(*Contract)
-		ret, gas, err = RunPrecompiledContract(p, evm, parent.CallerAddress, caller.Address(), input, gas, nil, evm.interpreter.readOnly)
+		ret, gas, err = evm.RunPrecompiledContract(p, parent.caller, input, gas, nil, evm.interpreter.(*EVMInterpreter).readOnly)
 	} else {
 		addrCopy := addr
 		// Initialise a new contract and make initialise the delegate values
@@ -413,7 +417,6 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 	if err = evm.hooks.CallHook(evm, caller.Address(), addr); err != nil {
 		return nil, gas, err
 	}
-
 	// Fail if we're trying to execute above the call depth limit
 	if evm.depth > int(params.CallCreateDepth) {
 		return nil, gas, ErrDepth
@@ -423,7 +426,7 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 	// after all empty accounts were deleted, so this is not required. However, if we omit this,
 	// then certain tests start failing; stRevertTest/RevertPrecompiledTouchExactOOG.json.
 	// We could change this, but for now it's left for legacy reasons
-	snapshot := evm.StateDB.Snapshot()
+	var snapshot = evm.StateDB.Snapshot()
 
 	// We do an AddBalance of zero here, just in order to trigger a touch.
 	// This doesn't matter on Mainnet, where all empties are gone at the time of Byzantium,
@@ -440,7 +443,7 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 	}
 
 	if p, isPrecompile := evm.precompile(addr); isPrecompile {
-		ret, gas, err = RunPrecompiledContract(p, evm, caller.Address(), caller.Address(), input, gas, nil, true)
+		ret, gas, err = evm.RunPrecompiledContract(p, caller, input, gas, nil, evm.interpreter.(*EVMInterpreter).readOnly)
 	} else {
 		// At this point, we use a copy of address. If we don't, the go compiler will
 		// leak the 'contract' to the outer scope, and make allocation for 'contract'
@@ -565,7 +568,6 @@ func (evm *EVM) create(caller ContractRef, codeAndHash *codeAndHash, gas uint64,
 			evm.Config.Tracer.CaptureExit(ret, gas-contract.Gas, err)
 		}
 	}
-
 	return ret, address, contract.Gas, err
 }
 
@@ -590,6 +592,7 @@ func (evm *EVM) Create2(caller ContractRef, code []byte, gas uint64, endowment *
 	contractAddr = crypto.CreateAddress2(caller.Address(), salt.Bytes32(), codeAndHash.Hash().Bytes())
 	return evm.create(caller, codeAndHash, gas, endowment, contractAddr, CREATE2)
 }
+
 
 // ChainConfig returns the environment's chain configuration
 func (evm *EVM) ChainConfig() *params.ChainConfig { return evm.chainConfig }
