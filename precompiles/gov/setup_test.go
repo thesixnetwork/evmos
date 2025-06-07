@@ -14,6 +14,7 @@ import (
 	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
 	govv1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
 
+	cmn "github.com/evmos/evmos/v20/precompiles/common"
 	"github.com/evmos/evmos/v20/precompiles/gov"
 	"github.com/evmos/evmos/v20/testutil/integration/evmos/factory"
 	"github.com/evmos/evmos/v20/testutil/integration/evmos/grpc"
@@ -32,7 +33,8 @@ type PrecompileTestSuite struct {
 	grpcHandler grpc.Handler
 	keyring     testkeyring.Keyring
 
-	precompile *gov.Precompile
+	executor   *gov.GovExecutor
+	precompile *cmn.Precompile
 }
 
 func TestPrecompileUnitTestSuite(t *testing.T) {
@@ -94,6 +96,11 @@ func (s *PrecompileTestSuite) SetupTest() {
 	s.keyring = keyring
 	s.network = nw
 
+	s.executor = gov.NewGovExecutor(
+		s.network.App.GovKeeper,
+		s.network.App.AuthzKeeper,
+	)
+	
 	if s.precompile, err = gov.NewPrecompile(
 		s.network.App.GovKeeper,
 		s.network.App.AuthzKeeper,

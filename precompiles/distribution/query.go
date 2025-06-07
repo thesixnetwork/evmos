@@ -7,8 +7,8 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	distributionkeeper "github.com/cosmos/cosmos-sdk/x/distribution/keeper"
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/common"
 	cmn "github.com/evmos/evmos/v20/precompiles/common"
-	"github.com/evmos/evmos/v20/x/evm/core/vm"
 )
 
 const (
@@ -39,9 +39,9 @@ const (
 )
 
 // ValidatorDistributionInfo returns the distribution info for a validator.
-func (p Precompile) ValidatorDistributionInfo(
+func (p DistributionExecutor) ValidatorDistributionInfo(
 	ctx sdk.Context,
-	_ *vm.Contract,
+	_ common.Address,
 	method *abi.Method,
 	args []interface{},
 ) ([]byte, error) {
@@ -63,9 +63,9 @@ func (p Precompile) ValidatorDistributionInfo(
 }
 
 // ValidatorOutstandingRewards returns the outstanding rewards for a validator.
-func (p Precompile) ValidatorOutstandingRewards(
+func (p DistributionExecutor) ValidatorOutstandingRewards(
 	ctx sdk.Context,
-	_ *vm.Contract,
+	_ common.Address,
 	method *abi.Method,
 	args []interface{},
 ) ([]byte, error) {
@@ -85,9 +85,9 @@ func (p Precompile) ValidatorOutstandingRewards(
 }
 
 // ValidatorCommission returns the commission for a validator.
-func (p Precompile) ValidatorCommission(
+func (p DistributionExecutor) ValidatorCommission(
 	ctx sdk.Context,
-	_ *vm.Contract,
+	_ common.Address,
 	method *abi.Method,
 	args []interface{},
 ) ([]byte, error) {
@@ -107,9 +107,9 @@ func (p Precompile) ValidatorCommission(
 }
 
 // ValidatorSlashes returns the slashes for a validator.
-func (p Precompile) ValidatorSlashes(
+func (p DistributionExecutor) ValidatorSlashes(
 	ctx sdk.Context,
-	_ *vm.Contract,
+	_ common.Address,
 	method *abi.Method,
 	args []interface{},
 ) ([]byte, error) {
@@ -131,9 +131,9 @@ func (p Precompile) ValidatorSlashes(
 }
 
 // DelegationRewards returns the total rewards accrued by a delegation.
-func (p Precompile) DelegationRewards(
+func (p DistributionExecutor) DelegationRewards(
 	ctx sdk.Context,
-	_ *vm.Contract,
+	_ common.Address,
 	method *abi.Method,
 	args []interface{},
 ) ([]byte, error) {
@@ -152,9 +152,9 @@ func (p Precompile) DelegationRewards(
 }
 
 // DelegationTotalRewards returns the total rewards accrued by a delegation.
-func (p Precompile) DelegationTotalRewards(
+func (p DistributionExecutor) DelegationTotalRewards(
 	ctx sdk.Context,
-	_ *vm.Contract,
+	_ common.Address,
 	method *abi.Method,
 	args []interface{},
 ) ([]byte, error) {
@@ -176,9 +176,9 @@ func (p Precompile) DelegationTotalRewards(
 }
 
 // DelegatorValidators returns the validators a delegator is bonded to.
-func (p Precompile) DelegatorValidators(
+func (p DistributionExecutor) DelegatorValidators(
 	ctx sdk.Context,
-	_ *vm.Contract,
+	_ common.Address,
 	method *abi.Method,
 	args []interface{},
 ) ([]byte, error) {
@@ -198,9 +198,9 @@ func (p Precompile) DelegatorValidators(
 }
 
 // DelegatorWithdrawAddress returns the withdraw address for a delegator.
-func (p Precompile) DelegatorWithdrawAddress(
+func (p DistributionExecutor) DelegatorWithdrawAddress(
 	ctx sdk.Context,
-	_ *vm.Contract,
+	_ common.Address,
 	method *abi.Method,
 	args []interface{},
 ) ([]byte, error) {

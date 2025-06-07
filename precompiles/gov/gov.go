@@ -1,6 +1,3 @@
-// Copyright Tharsis Labs Ltd.(Evmos)
-// SPDX-License-Identifier:ENCL-1.0(https://github.com/evmos/evmos/blob/main/LICENSE)
-
 package gov
 
 import (
@@ -9,144 +6,52 @@ import (
 	"math/big"
 
 	"cosmossdk.io/log"
-	storetypes "cosmossdk.io/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authzkeeper "github.com/cosmos/cosmos-sdk/x/authz/keeper"
 	govkeeper "github.com/cosmos/cosmos-sdk/x/gov/keeper"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
-
 	cmn "github.com/evmos/evmos/v20/precompiles/common"
 	"github.com/evmos/evmos/v20/x/evm/core/vm"
-	"github.com/evmos/evmos/v20/x/evm/statedb"
 	evmtypes "github.com/evmos/evmos/v20/x/evm/types"
 )
 
-var _ vm.PrecompiledContract = &Precompile{}
-
-// Embed abi json file to the executable binary. Needed when importing as dependency.
-//
 //go:embed abi.json
 var f embed.FS
 
-// Precompile defines the precompiled contract for gov.
-type Precompile struct {
-	cmn.Precompile
-	govKeeper govkeeper.Keeper
-}
-
-// LoadABI loads the gov ABI from the embedded abi.json file
-// for the gov precompile.
-func LoadABI() (abi.ABI, error) {
+func GetABI() (abi.ABI, error) {
 	return cmn.LoadABI(f, "abi.json")
 }
 
-// NewPrecompile creates a new gov Precompile instance as a
-// PrecompiledContract interface.
-func NewPrecompile(
-	govKeeper govkeeper.Keeper,
-	authzKeeper authzkeeper.Keeper,
-) (*Precompile, error) {
-	abi, err := LoadABI()
-	if err != nil {
-		return nil, err
-	}
-
-	p := &Precompile{
-		Precompile: cmn.Precompile{
-			ABI:                  abi,
-			AuthzKeeper:          authzKeeper,
-			KvGasConfig:          storetypes.KVGasConfig(),
-			TransientKVGasConfig: storetypes.TransientGasConfig(),
-			ApprovalExpiration:   cmn.DefaultExpirationDuration, // should be configurable in the future.
-		},
-		govKeeper: govKeeper,
-	}
-
-	// SetAddress defines the address of the gov precompiled contract.
-	p.SetAddress(common.HexToAddress(evmtypes.GovPrecompileAddress))
-
-	return p, nil
+type GovExecutor struct {
+	govKeeper   govkeeper.Keeper
+	authzKeeper authzkeeper.Keeper
+	address     common.Address
 }
 
-// RequiredGas calculates the precompiled contract's base gas rate.
-func (p Precompile) RequiredGas(input []byte) uint64 {
-	// NOTE: This check avoid panicking when trying to decode the method ID
-	if len(input) < 4 {
-		return 0
+func NewGovExecutor(gk govkeeper.Keeper, ak authzkeeper.Keeper) *GovExecutor {
+	return &GovExecutor{
+		govKeeper:   gk,
+		authzKeeper: ak,
+		address:     common.HexToAddress(evmtypes.GovPrecompileAddress),
 	}
-	methodID := input[:4]
-
-	method, err := p.MethodById(methodID)
-	if err != nil {
-		// This should never happen since this method is going to fail during Run
-		return 0
-	}
-
-	return cmn.DefaultGasCost(input, p.IsTransaction(method.Name))
 }
 
-// Run executes the precompiled contract gov methods defined in the ABI.
-func (p Precompile) Run(evm *vm.EVM, caller common.Address, callingContract common.Address, input []byte, value *big.Int, readOnly bool) (bz []byte, err error) {
-	ctx, method, args, err := p.Prepare(evm, input, value, readOnly)
+func NewPrecompile(govKeeper govkeeper.Keeper, authzKeeper authzkeeper.Keeper) (*cmn.Precompile, error) {
+	abi, err := GetABI()
 	if err != nil {
 		return nil, err
 	}
-
-	stateDB, ok := evm.StateDB.(*statedb.StateDB)
-	if !ok {
-		return nil, vm.ErrOutOfGas
-	}
-
-	initialGas := ctx.GasMeter().GasConsumed()
-
-	// This handles any out of gas errors that may occur during the execution of a precompile tx or query.
-	// It avoids panics and returns the out of gas error so the EVM can continue gracefully.
-	defer cmn.HandleGasError(ctx, p.RequiredGas(input), initialGas, &err)()
-
-	if err := stateDB.Commit(); err != nil {
-		return nil, err
-	}
-
-	switch method.Name {
-	// gov transactions
-	case VoteMethod:
-		bz, err = p.Vote(ctx, evm.Origin, caller, stateDB, method, args)
-	case VoteWeightedMethod:
-		bz, err = p.VoteWeighted(ctx, evm.Origin, caller, stateDB, method, args)
-	// gov queries
-	case GetVoteMethod:
-		bz, err = p.GetVote(ctx, method, caller, args)
-	case GetVotesMethod:
-		bz, err = p.GetVotes(ctx, method, caller, args)
-	case GetDepositMethod:
-		bz, err = p.GetDeposit(ctx, method, caller, args)
-	case GetDepositsMethod:
-		bz, err = p.GetDeposits(ctx, method, caller, args)
-	case GetTallyResultMethod:
-		bz, err = p.GetTallyResult(ctx, method, caller, args)
-	default:
-		return nil, fmt.Errorf(cmn.ErrUnknownMethod, method.Name)
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	if err := p.AddJournalEntries(stateDB, ctx); err != nil {
-		return nil, err
-	}
-
-	return bz, nil
+	exec := NewGovExecutor(govKeeper, authzKeeper)
+	return cmn.NewPrecompile(abi, exec, exec.address, "gov"), nil
 }
 
-// IsTransaction checks if the given method name corresponds to a transaction or query.
-//
-// Available gov transactions are:
-//   - Vote
-//   - VoteWeighted
-func (Precompile) IsTransaction(methodName string) bool {
+func (e *GovExecutor) RequiredGas(input []byte, method *abi.Method) uint64 {
+	return cmn.DefaultGasCost(input, e.IsTransaction(method.Name))
+}
+
+func (e *GovExecutor) IsTransaction(methodName string) bool {
 	switch methodName {
 	case VoteMethod, VoteWeightedMethod:
 		return true
@@ -155,7 +60,50 @@ func (Precompile) IsTransaction(methodName string) bool {
 	}
 }
 
-// Logger returns a precompile-specific logger.
-func (p Precompile) Logger(ctx sdk.Context) log.Logger {
-	return ctx.Logger().With("evm extension", "gov")
+func (e *GovExecutor) Address() common.Address {
+	// All methods are queries for this precompile
+	return e.address
+}
+
+func (e *GovExecutor) GetABI() abi.ABI {
+	// All methods are queries for this precompile
+	abi, err := GetABI()
+	if err != nil {
+		panic(err)
+	}
+	return abi
+}
+
+func (e *GovExecutor) Execute(
+	ctx sdk.Context,
+	method *abi.Method,
+	caller common.Address,
+	callingContract common.Address,
+	args []interface{},
+	value *big.Int,
+	readOnly bool,
+	evm *vm.EVM,
+) ([]byte, error) {
+	switch method.Name {
+	case VoteMethod:
+		return e.Vote(ctx, caller, callingContract, evm.StateDB, method, args)
+	case VoteWeightedMethod:
+		return e.VoteWeighted(ctx, evm.Origin, caller, evm.StateDB, method, args)
+	case GetVoteMethod:
+		return e.GetVote(ctx, method, callingContract, args)
+	case GetVotesMethod:
+		return e.GetVotes(ctx, method, callingContract, args)
+	case GetDepositMethod:
+		return e.GetDeposit(ctx, method, callingContract, args)
+	case GetDepositsMethod:
+		return e.GetDeposits(ctx, method, callingContract, args)
+	case GetTallyResultMethod:
+		return e.GetTallyResult(ctx, method, callingContract, args)
+	default:
+		return nil, fmt.Errorf("gov precompile: unknown method: %s", method.Name)
+	}
+}
+
+func (e *GovExecutor) Logger(ctx sdk.Context) log.Logger {
+	return ctx.Logger().With("precompile", "gov")
 }

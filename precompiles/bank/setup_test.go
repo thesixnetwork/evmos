@@ -8,6 +8,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/evmos/evmos/v20/precompiles/bank"
+	cmn "github.com/evmos/evmos/v20/precompiles/common"
 	"github.com/evmos/evmos/v20/testutil/integration/evmos/factory"
 	"github.com/evmos/evmos/v20/testutil/integration/evmos/grpc"
 	testkeyring "github.com/evmos/evmos/v20/testutil/integration/evmos/keyring"
@@ -34,7 +35,8 @@ type PrecompileTestSuite struct {
 	grpcHandler grpc.Handler
 	keyring     testkeyring.Keyring
 
-	precompile *bank.Precompile
+	executor     *bank.BankExecutor
+	precompile   *cmn.Precompile
 }
 
 func TestPrecompileTestSuite(t *testing.T) {
@@ -85,6 +87,7 @@ func (s *PrecompileTestSuite) SetupTest() sdk.Context {
 
 	s.xmplAddr = tokenPair.GetERC20Contract()
 
+	s.executor = s.setupBankExecutor()
 	s.precompile = s.setupBankPrecompile()
 	return ctx
 }

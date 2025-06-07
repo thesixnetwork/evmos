@@ -1,9 +1,7 @@
-// Copyright Tharsis Labs Ltd.(Evmos)
-// SPDX-License-Identifier:ENCL-1.0(https://github.com/evmos/evmos/blob/main/LICENSE)
-
 package bank
 
 import (
+	"fmt"
 	"math/big"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -11,101 +9,78 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-const (
-	// BalancesMethod defines the ABI method name for the bank Balances
-	// query.
-	BalancesMethod = "balances"
-	// TotalSupplyMethod defines the ABI method name for the bank TotalSupply
-	// query.
-	TotalSupplyMethod = "totalSupply"
-	// SupplyOfMethod defines the ABI method name for the bank SupplyOf
-	// query.
-	SupplyOfMethod = "supplyOf"
-)
-
-// Balances returns all the native token balances (address, amount) for a given
-// account. This method charges the account the corresponding value of an ERC-20
-// balanceOf call for each token returned.
-func (p Precompile) Balances(ctx sdk.Context, caller common.Address, method *abi.Method, args []interface{}, value *big.Int, readOnly bool) ([]byte, error) {
+// Balances returns all the native token balances (contract address, amount) for a given account.
+func (e BankExecutor) Balances(ctx sdk.Context, caller common.Address, method *abi.Method, args []interface{}, value *big.Int, readOnly bool) ([]byte, error) {
+	if len(args) < 1 {
+		return nil, ErrInvalidArgs
+	}
 	account, err := ParseBalancesArgs(args)
 	if err != nil {
 		return nil, err
 	}
-
 	i := 0
 	balances := make([]Balance, 0)
 
-	p.bankKeeper.IterateAccountBalances(ctx, account, func(coin sdk.Coin) bool {
+	e.bankKeeper.IterateAccountBalances(ctx, account, func(coin sdk.Coin) bool {
 		defer func() { i++ }()
-
-		// NOTE: we already charged for a single balanceOf request so we don't
-		// need to charge on the first iteration
 		if i > 0 {
 			ctx.GasMeter().ConsumeGas(GasBalanceOf, "ERC-20 extension balances method")
 		}
-
-		contractAddress, err := p.erc20Keeper.GetCoinAddress(ctx, coin.Denom)
+		contractAddress, err := e.erc20Keeper.GetCoinAddress(ctx, coin.Denom)
 		if err != nil {
 			return false
 		}
-
 		balances = append(balances, Balance{
 			ContractAddress: contractAddress,
 			Amount:          coin.Amount.BigInt(),
 		})
-
 		return false
 	})
-
 	return method.Outputs.Pack(balances)
 }
 
 // TotalSupply returns the total supply of all the native tokens.
-// This method charges the account the corresponding value of a ERC-20 totalSupply
-// call for each token returned.
-func (p Precompile) TotalSupply(ctx sdk.Context, caller common.Address, method *abi.Method, args []interface{}, value *big.Int, readOnly bool) ([]byte, error) {
+func (e *BankExecutor) TotalSupply(ctx sdk.Context, caller common.Address, method *abi.Method, args []interface{}, value *big.Int, readOnly bool) ([]byte, error) {
 	i := 0
-	totalSupply := make([]Balance, 0)
+	var totalSupply []Balance
 
-	p.bankKeeper.IterateTotalSupply(ctx, func(coin sdk.Coin) bool {
+	e.bankKeeper.IterateTotalSupply(ctx, func(coin sdk.Coin) bool {
 		defer func() { i++ }()
-
-		// NOTE: we already charged for a single totalSupply request so we don't
-		// need to charge on the first iteration
 		if i > 0 {
 			ctx.GasMeter().ConsumeGas(GasTotalSupply, "ERC-20 extension totalSupply method")
 		}
-
-		contractAddress, err := p.erc20Keeper.GetCoinAddress(ctx, coin.Denom)
+		contractAddress, err := e.erc20Keeper.GetCoinAddress(ctx, coin.Denom)
 		if err != nil {
 			return false
 		}
-
 		totalSupply = append(totalSupply, Balance{
 			ContractAddress: contractAddress,
 			Amount:          coin.Amount.BigInt(),
 		})
-
 		return false
 	})
-
 	return method.Outputs.Pack(totalSupply)
 }
 
 // SupplyOf returns the total native supply of a given registered erc20 token.
-func (p Precompile) SupplyOf(ctx sdk.Context, caller common.Address, method *abi.Method, args []interface{}, value *big.Int, readOnly bool) ([]byte, error) {
+func (e *BankExecutor) SupplyOf(ctx sdk.Context, caller common.Address, method *abi.Method, args []interface{}, value *big.Int, readOnly bool) ([]byte, error) {
+	if len(args) < 1 {
+		return nil, ErrInvalidArgs
+	}
 	erc20ContractAddress, err := ParseSupplyOfArgs(args)
 	if err != nil {
 		return nil, err
 	}
 
-	tokenPairID := p.erc20Keeper.GetERC20Map(ctx, erc20ContractAddress)
-	tokenPair, found := p.erc20Keeper.GetTokenPair(ctx, tokenPairID)
+	tokenPairID := e.erc20Keeper.GetERC20Map(ctx, erc20ContractAddress)
+	tokenPair, found := e.erc20Keeper.GetTokenPair(ctx, tokenPairID)
 	if !found {
 		return method.Outputs.Pack(big.NewInt(0))
 	}
 
-	supply := p.bankKeeper.GetSupply(ctx, tokenPair.Denom)
-
+	supply := e.bankKeeper.GetSupply(ctx, tokenPair.Denom)
 	return method.Outputs.Pack(supply.Amount.BigInt())
 }
+
+// You'd define this error in a common error location:
+var ErrInvalidArgs = fmt.Errorf("bank precompile: invalid arguments")

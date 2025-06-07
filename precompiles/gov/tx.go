@@ -23,7 +23,7 @@ const (
 )
 
 // Vote claims the rewards accumulated by a delegator from multiple or all validators.
-func (p Precompile) Vote(
+func (p GovExecutor) Vote(
 	ctx sdk.Context,
 	origin common.Address,
 	caller common.Address,
@@ -56,7 +56,7 @@ func (p Precompile) Vote(
 }
 
 // VoteWeighted claims the rewards accumulated by a delegator from multiple or all validators.
-func (p Precompile) VoteWeighted(
+func (p GovExecutor) VoteWeighted(
 	ctx sdk.Context,
 	origin common.Address,
 	caller common.Address,

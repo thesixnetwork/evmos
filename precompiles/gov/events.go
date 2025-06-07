@@ -21,9 +21,9 @@ const (
 )
 
 // EmitVoteEvent creates a new event emitted on a Vote transaction.
-func (p Precompile) EmitVoteEvent(ctx sdk.Context, stateDB vm.StateDB, voterAddress common.Address, proposalID uint64, option int32) error {
+func (p GovExecutor) EmitVoteEvent(ctx sdk.Context, stateDB vm.StateDB, voterAddress common.Address, proposalID uint64, option int32) error {
 	// Prepare the event topics
-	event := p.ABI.Events[EventTypeVote]
+	event := p.GetABI().Events[EventTypeVote]
 	topics := make([]common.Hash, 2)
 
 	// The first topic is always the signature of the event.
@@ -53,9 +53,9 @@ func (p Precompile) EmitVoteEvent(ctx sdk.Context, stateDB vm.StateDB, voterAddr
 }
 
 // EmitVoteWeightedEvent creates a new event emitted on a VoteWeighted transaction.
-func (p Precompile) EmitVoteWeightedEvent(ctx sdk.Context, stateDB vm.StateDB, voterAddress common.Address, proposalID uint64, options WeightedVoteOptions) error {
+func (p GovExecutor) EmitVoteWeightedEvent(ctx sdk.Context, stateDB vm.StateDB, voterAddress common.Address, proposalID uint64, options WeightedVoteOptions) error {
 	// Prepare the event topics
-	event := p.ABI.Events[EventTypeVoteWeighted]
+	event := p.GetABI().Events[EventTypeVoteWeighted]
 	topics := make([]common.Hash, 2)
 
 	// The first topic is always the signature of the event.

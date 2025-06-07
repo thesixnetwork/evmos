@@ -3,6 +3,7 @@ package gov_test
 import (
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 
@@ -21,7 +22,7 @@ func (s *PrecompileTestSuite) TestIsTransaction() {
 	}{
 		{
 			gov.VoteMethod,
-			s.precompile.Methods[gov.VoteMethod].Name,
+			s.precompile.GetABI().Methods[gov.VoteMethod].Name,
 			true,
 		},
 		{
@@ -33,7 +34,7 @@ func (s *PrecompileTestSuite) TestIsTransaction() {
 
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
-			s.Require().Equal(s.precompile.IsTransaction(tc.method), tc.isTx)
+			s.Require().Equal(s.executor.IsTransaction(tc.method), tc.isTx)
 		})
 	}
 }
@@ -54,7 +55,7 @@ func (s *PrecompileTestSuite) TestRun() {
 				const option uint8 = 1
 				const metadata = "metadata"
 
-				input, err := s.precompile.Pack(
+				input, err := s.precompile.GetABI().Pack(
 					gov.VoteMethod,
 					s.keyring.GetAddr(0),
 					proposalID,
@@ -122,7 +123,7 @@ func (s *PrecompileTestSuite) TestRun() {
 			evm.WithPrecompiles(precompiles.Map, precompiles.Addresses)
 
 			// Run precompiled contract
-			bz, err := s.precompile.Run(evm, contract.CallerAddress, contractAddr, contract.Input, contract.Value(), tc.readOnly)
+			bz, err := s.precompile.GetExecutor().Execute(ctx, &abi.Method{}, contract.CallerAddress, contractAddr, []interface{}{}, common.Big0, tc.readOnly, evm)
 
 			// Check results
 			if tc.expPass {

@@ -41,7 +41,7 @@ type IntegrationTestSuite struct {
 	grpcHandler grpc.Handler
 	keyring     keyring.Keyring
 
-	precompile *bank.Precompile
+	precompile *bank.BankExecutor
 }
 
 func (is *IntegrationTestSuite) SetupTest() {
@@ -86,7 +86,7 @@ func (is *IntegrationTestSuite) SetupTest() {
 	tokenPair, found = is.network.App.Erc20Keeper.GetTokenPair(is.network.GetContext(), tokenPairID)
 	Expect(found).To(BeTrue(), "failed to register token erc20 extension")
 	is.xmplAddr = common.HexToAddress(tokenPair.Erc20Address)
-	is.precompile = is.setupBankPrecompile()
+	is.precompile = is.setupBankExecutor()
 }
 
 func TestIntegrationSuite(t *testing.T) {
@@ -137,7 +137,7 @@ var _ = Describe("Bank Extension -", func() {
 		contractData = ContractData{
 			ownerPriv:      sender.Priv,
 			precompileAddr: is.precompile.Address(),
-			precompileABI:  is.precompile.ABI,
+			precompileABI:  is.precompile.GetABI(),
 			contractAddr:   bankCallerContractAddr,
 			contractABI:    bankCallerContract.ABI,
 		}
@@ -163,7 +163,7 @@ var _ = Describe("Bank Extension -", func() {
 				Expect(err).ToNot(HaveOccurred(), "unexpected result calling contract")
 
 				var balances []bank.Balance
-				err = is.precompile.UnpackIntoInterface(&balances, bank.BalancesMethod, ethRes.Ret)
+				err = is.precompile.GetABI().UnpackIntoInterface(&balances, bank.BalancesMethod, ethRes.Ret)
 				Expect(err).ToNot(HaveOccurred(), "failed to unpack balances")
 
 				balanceAfter, err := is.grpcHandler.GetBalance(receiver.Bytes(), is.tokenDenom)
@@ -186,7 +186,7 @@ var _ = Describe("Bank Extension -", func() {
 				Expect(err).ToNot(HaveOccurred(), "unexpected result calling contract")
 
 				var balances []bank.Balance
-				err = is.precompile.UnpackIntoInterface(&balances, bank.BalancesMethod, ethRes.Ret)
+				err = is.precompile.GetABI().UnpackIntoInterface(&balances, bank.BalancesMethod, ethRes.Ret)
 				Expect(err).ToNot(HaveOccurred(), "failed to unpack balances")
 
 				balanceAfter, err := is.grpcHandler.GetBalance(receiver.Bytes(), utils.BaseDenom)
@@ -202,7 +202,7 @@ var _ = Describe("Bank Extension -", func() {
 				Expect(err).ToNot(HaveOccurred(), "unexpected result calling contract")
 
 				var balances []bank.Balance
-				err = is.precompile.UnpackIntoInterface(&balances, bank.BalancesMethod, ethRes.Ret)
+				err = is.precompile.GetABI().UnpackIntoInterface(&balances, bank.BalancesMethod, ethRes.Ret)
 				Expect(err).ToNot(HaveOccurred(), "failed to unpack balances")
 
 				Expect(balances).To(BeEmpty())
@@ -217,7 +217,7 @@ var _ = Describe("Bank Extension -", func() {
 				Expect(err).ToNot(HaveOccurred(), "failed to decode tx response")
 
 				var balances []bank.Balance
-				err = is.precompile.UnpackIntoInterface(&balances, bank.BalancesMethod, ethRes.Ret)
+				err = is.precompile.GetABI().UnpackIntoInterface(&balances, bank.BalancesMethod, ethRes.Ret)
 				Expect(err).ToNot(HaveOccurred(), "failed to unpack balances")
 
 				gasUsed := Max(bank.GasBalanceOf, len(balances)*bank.GasBalanceOf)
@@ -233,7 +233,7 @@ var _ = Describe("Bank Extension -", func() {
 				Expect(err).ToNot(HaveOccurred(), "unexpected result calling contract")
 
 				var balances []bank.Balance
-				err = is.precompile.UnpackIntoInterface(&balances, bank.TotalSupplyMethod, ethRes.Ret)
+				err = is.precompile.GetABI().UnpackIntoInterface(&balances, bank.TotalSupplyMethod, ethRes.Ret)
 				Expect(err).ToNot(HaveOccurred(), "failed to unpack balances")
 
 				Expect(balances[0].Amount).To(Equal(evmosTotalSupply))
@@ -247,7 +247,7 @@ var _ = Describe("Bank Extension -", func() {
 				_, ethRes, err := is.factory.CallContractAndCheckLogs(sender.Priv, queryArgs, supplyArgs, passCheck)
 				Expect(err).ToNot(HaveOccurred(), "unexpected result calling contract")
 
-				out, err := is.precompile.Unpack(bank.SupplyOfMethod, ethRes.Ret)
+				out, err := is.precompile.GetABI().Unpack(bank.SupplyOfMethod, ethRes.Ret)
 				Expect(err).ToNot(HaveOccurred(), "failed to unpack balances")
 
 				Expect(out[0].(*big.Int)).To(Equal(evmosTotalSupply))
@@ -258,7 +258,7 @@ var _ = Describe("Bank Extension -", func() {
 				_, ethRes, err := is.factory.CallContractAndCheckLogs(sender.Priv, queryArgs, supplyArgs, passCheck)
 				Expect(err).ToNot(HaveOccurred(), "unexpected result calling contract")
 
-				out, err := is.precompile.Unpack(bank.SupplyOfMethod, ethRes.Ret)
+				out, err := is.precompile.GetABI().Unpack(bank.SupplyOfMethod, ethRes.Ret)
 				Expect(err).ToNot(HaveOccurred(), "failed to unpack balances")
 
 				Expect(out[0].(*big.Int)).To(Equal(xmplTotalSupply))
@@ -269,7 +269,7 @@ var _ = Describe("Bank Extension -", func() {
 				_, ethRes, err := is.factory.CallContractAndCheckLogs(sender.Priv, queryArgs, supplyArgs, passCheck)
 				Expect(err).ToNot(HaveOccurred(), "unexpected result calling contract")
 
-				out, err := is.precompile.Unpack(bank.SupplyOfMethod, ethRes.Ret)
+				out, err := is.precompile.GetABI().Unpack(bank.SupplyOfMethod, ethRes.Ret)
 				Expect(err).ToNot(HaveOccurred(), "failed to unpack balances")
 
 				Expect(out[0].(*big.Int).Int64()).To(Equal(big.NewInt(0).Int64()))
@@ -306,7 +306,7 @@ var _ = Describe("Bank Extension -", func() {
 				Expect(err).ToNot(HaveOccurred(), "unexpected result calling contract")
 
 				var balances []bank.Balance
-				err = is.precompile.UnpackIntoInterface(&balances, bank.BalancesMethod, ethRes.Ret)
+				err = is.precompile.GetABI().UnpackIntoInterface(&balances, bank.BalancesMethod, ethRes.Ret)
 				Expect(err).ToNot(HaveOccurred(), "failed to unpack balances")
 
 				balanceAfter, err := is.grpcHandler.GetBalance(receiver.Bytes(), is.tokenDenom)
@@ -329,7 +329,7 @@ var _ = Describe("Bank Extension -", func() {
 				Expect(err).ToNot(HaveOccurred(), "unexpected result calling contract")
 
 				var balances []bank.Balance
-				err = is.precompile.UnpackIntoInterface(&balances, bank.BalancesMethod, ethRes.Ret)
+				err = is.precompile.GetABI().UnpackIntoInterface(&balances, bank.BalancesMethod, ethRes.Ret)
 				Expect(err).ToNot(HaveOccurred(), "failed to unpack balances")
 
 				balanceAfter, err := is.grpcHandler.GetBalance(receiver.Bytes(), utils.BaseDenom)
@@ -345,7 +345,7 @@ var _ = Describe("Bank Extension -", func() {
 				Expect(err).ToNot(HaveOccurred(), "unexpected result calling contract")
 
 				var balances []bank.Balance
-				err = is.precompile.UnpackIntoInterface(&balances, bank.BalancesMethod, ethRes.Ret)
+				err = is.precompile.GetABI().UnpackIntoInterface(&balances, bank.BalancesMethod, ethRes.Ret)
 				Expect(err).ToNot(HaveOccurred(), "failed to unpack balances")
 
 				Expect(balances).To(BeEmpty())
@@ -360,7 +360,7 @@ var _ = Describe("Bank Extension -", func() {
 				Expect(err).ToNot(HaveOccurred(), "failed to decode tx response")
 
 				var balances []bank.Balance
-				err = is.precompile.UnpackIntoInterface(&balances, bank.BalancesMethod, ethRes.Ret)
+				err = is.precompile.GetABI().UnpackIntoInterface(&balances, bank.BalancesMethod, ethRes.Ret)
 				Expect(err).ToNot(HaveOccurred(), "failed to unpack balances")
 
 				gasUsed := Max(bank.GasBalanceOf, len(balances)*bank.GasBalanceOf)
@@ -376,7 +376,7 @@ var _ = Describe("Bank Extension -", func() {
 				Expect(err).ToNot(HaveOccurred(), "unexpected result calling contract")
 
 				var balances []bank.Balance
-				err = is.precompile.UnpackIntoInterface(&balances, bank.TotalSupplyMethod, ethRes.Ret)
+				err = is.precompile.GetABI().UnpackIntoInterface(&balances, bank.TotalSupplyMethod, ethRes.Ret)
 				Expect(err).ToNot(HaveOccurred(), "failed to unpack balances")
 
 				Expect(balances[0].Amount).To(Equal(evmosTotalSupply))
@@ -390,7 +390,7 @@ var _ = Describe("Bank Extension -", func() {
 				_, ethRes, err := is.factory.CallContractAndCheckLogs(sender.Priv, queryArgs, supplyArgs, passCheck)
 				Expect(err).ToNot(HaveOccurred(), "unexpected result calling contract")
 
-				out, err := is.precompile.Unpack(bank.SupplyOfMethod, ethRes.Ret)
+				out, err := is.precompile.GetABI().Unpack(bank.SupplyOfMethod, ethRes.Ret)
 				Expect(err).ToNot(HaveOccurred(), "failed to unpack balances")
 
 				Expect(out[0].(*big.Int)).To(Equal(evmosTotalSupply))
@@ -401,7 +401,7 @@ var _ = Describe("Bank Extension -", func() {
 				_, ethRes, err := is.factory.CallContractAndCheckLogs(sender.Priv, queryArgs, supplyArgs, passCheck)
 				Expect(err).ToNot(HaveOccurred(), "unexpected result calling contract")
 
-				out, err := is.precompile.Unpack(bank.SupplyOfMethod, ethRes.Ret)
+				out, err := is.precompile.GetABI().Unpack(bank.SupplyOfMethod, ethRes.Ret)
 				Expect(err).ToNot(HaveOccurred(), "failed to unpack balances")
 
 				Expect(out[0].(*big.Int)).To(Equal(xmplTotalSupply))
@@ -412,7 +412,7 @@ var _ = Describe("Bank Extension -", func() {
 				_, ethRes, err := is.factory.CallContractAndCheckLogs(sender.Priv, queryArgs, supplyArgs, passCheck)
 				Expect(err).ToNot(HaveOccurred(), "unexpected result calling contract")
 
-				out, err := is.precompile.Unpack(bank.SupplyOfMethod, ethRes.Ret)
+				out, err := is.precompile.GetABI().Unpack(bank.SupplyOfMethod, ethRes.Ret)
 				Expect(err).ToNot(HaveOccurred(), "failed to unpack balances")
 
 				Expect(out[0].(*big.Int).Int64()).To(Equal(big.NewInt(0).Int64()))

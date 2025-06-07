@@ -1,6 +1,3 @@
-// Copyright Tharsis Labs Ltd.(Evmos)
-// SPDX-License-Identifier:ENCL-1.0(https://github.com/evmos/evmos/blob/main/LICENSE)
-
 package gov
 
 import (
@@ -11,20 +8,15 @@ import (
 )
 
 const (
-	// GetVotesMethod defines the method name for the votes precompile request.
-	GetVotesMethod = "getVotes"
-	// GetVoteMethod defines the method name for the vote precompile request.
-	GetVoteMethod = "getVote"
-	// GetDepositMethod defines the method name for the deposit precompile request.
-	GetDepositMethod = "getDeposit"
-	// GetDepositsMethod defines the method name for the deposits precompile request.
-	GetDepositsMethod = "getDeposits"
-	// GetTallyResultMethod defines the method name for the tally result precompile request.
+	GetVotesMethod       = "getVotes"
+	GetVoteMethod        = "getVote"
+	GetDepositMethod     = "getDeposit"
+	GetDepositsMethod    = "getDeposits"
 	GetTallyResultMethod = "getTallyResult"
 )
 
 // GetVotes implements the query logic for getting votes for a proposal.
-func (p *Precompile) GetVotes(
+func (e *GovExecutor) GetVotes(
 	ctx sdk.Context,
 	method *abi.Method,
 	_ common.Address,
@@ -35,7 +27,7 @@ func (p *Precompile) GetVotes(
 		return nil, err
 	}
 
-	queryServer := govkeeper.NewQueryServer(&p.govKeeper)
+	queryServer := govkeeper.NewQueryServer(&e.govKeeper)
 	res, err := queryServer.Votes(ctx, queryVotesReq)
 	if err != nil {
 		return nil, err
@@ -45,8 +37,7 @@ func (p *Precompile) GetVotes(
 	return method.Outputs.Pack(output.Votes, output.PageResponse)
 }
 
-// GetVote implements the query logic for getting votes for a proposal.
-func (p *Precompile) GetVote(
+func (e *GovExecutor) GetVote(
 	ctx sdk.Context,
 	method *abi.Method,
 	_ common.Address,
@@ -56,20 +47,16 @@ func (p *Precompile) GetVote(
 	if err != nil {
 		return nil, err
 	}
-
-	queryServer := govkeeper.NewQueryServer(&p.govKeeper)
+	queryServer := govkeeper.NewQueryServer(&e.govKeeper)
 	res, err := queryServer.Vote(ctx, queryVotesReq)
 	if err != nil {
 		return nil, err
 	}
-
 	output := new(VoteOutput).FromResponse(res)
-
 	return method.Outputs.Pack(output.Vote)
 }
 
-// GetDeposit implements the query logic for getting a deposit for a proposal.
-func (p *Precompile) GetDeposit(
+func (e *GovExecutor) GetDeposit(
 	ctx sdk.Context,
 	method *abi.Method,
 	_ common.Address,
@@ -79,19 +66,16 @@ func (p *Precompile) GetDeposit(
 	if err != nil {
 		return nil, err
 	}
-
-	queryServer := govkeeper.NewQueryServer(&p.govKeeper)
+	queryServer := govkeeper.NewQueryServer(&e.govKeeper)
 	res, err := queryServer.Deposit(ctx, queryDepositReq)
 	if err != nil {
 		return nil, err
 	}
-
 	output := new(DepositOutput).FromResponse(res)
 	return method.Outputs.Pack(output.Deposit)
 }
 
-// GetDeposits implements the query logic for getting all deposits for a proposal.
-func (p *Precompile) GetDeposits(
+func (e *GovExecutor) GetDeposits(
 	ctx sdk.Context,
 	method *abi.Method,
 	_ common.Address,
@@ -101,19 +85,16 @@ func (p *Precompile) GetDeposits(
 	if err != nil {
 		return nil, err
 	}
-
-	queryServer := govkeeper.NewQueryServer(&p.govKeeper)
+	queryServer := govkeeper.NewQueryServer(&e.govKeeper)
 	res, err := queryServer.Deposits(ctx, queryDepositsReq)
 	if err != nil {
 		return nil, err
 	}
-
 	output := new(DepositsOutput).FromResponse(res)
 	return method.Outputs.Pack(output.Deposits, output.PageResponse)
 }
 
-// GetTallyResult implements the query logic for getting the tally result of a proposal.
-func (p *Precompile) GetTallyResult(
+func (e *GovExecutor) GetTallyResult(
 	ctx sdk.Context,
 	method *abi.Method,
 	_ common.Address,
@@ -123,13 +104,11 @@ func (p *Precompile) GetTallyResult(
 	if err != nil {
 		return nil, err
 	}
-
-	queryServer := govkeeper.NewQueryServer(&p.govKeeper)
+	queryServer := govkeeper.NewQueryServer(&e.govKeeper)
 	res, err := queryServer.TallyResult(ctx, queryTallyResultReq)
 	if err != nil {
 		return nil, err
 	}
-
 	output := new(TallyResultOutput).FromResponse(res)
 	return method.Outputs.Pack(output.TallyResult)
 }

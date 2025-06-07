@@ -11,26 +11,36 @@ import (
 	evmtypes "github.com/evmos/evmos/v20/x/evm/types"
 	inflationtypes "github.com/evmos/evmos/v20/x/inflation/v1/types"
 
+	cmn "github.com/evmos/evmos/v20/precompiles/common"
+
 	//nolint:revive // dot imports are fine for Ginkgo
 	. "github.com/onsi/gomega"
 )
 
 // setupBankPrecompile is a helper function to set up an instance of the Bank precompile for
 // a given token denomination.
-func (s *PrecompileTestSuite) setupBankPrecompile() *bank.Precompile {
+func (s *PrecompileTestSuite) setupBankPrecompile() *cmn.Precompile {
 	precompile, err := bank.NewPrecompile(
 		s.network.App.BankKeeper,
 		s.network.App.Erc20Keeper,
 	)
-
 	s.Require().NoError(err, "failed to create bank precompile")
+
+	return precompile
+}
+
+func (s *PrecompileTestSuite) setupBankExecutor() *bank.BankExecutor {
+	precompile := bank.NewBankExecutor(
+		s.network.App.BankKeeper,
+		s.network.App.Erc20Keeper,
+	)
 
 	return precompile
 }
 
 // setupBankPrecompile is a helper function to set up an instance of the Bank precompile for
 // a given token denomination.
-func (is *IntegrationTestSuite) setupBankPrecompile() *bank.Precompile {
+func (is *IntegrationTestSuite) setupBankPrecompile() *cmn.Precompile {
 	precompile, err := bank.NewPrecompile(
 		is.network.App.BankKeeper,
 		is.network.App.Erc20Keeper,
@@ -38,6 +48,17 @@ func (is *IntegrationTestSuite) setupBankPrecompile() *bank.Precompile {
 	Expect(err).ToNot(HaveOccurred(), "failed to create bank precompile")
 	return precompile
 }
+
+// setupBankPrecompile is a helper function to set up an instance of the Bank precompile for
+// a given token denomination.
+func (is *IntegrationTestSuite) setupBankExecutor() *bank.BankExecutor {
+	precompile := bank.NewBankExecutor(
+		is.network.App.BankKeeper,
+		is.network.App.Erc20Keeper,
+	)
+	return precompile
+}
+
 
 // mintAndSendXMPLCoin is a helper function to mint and send a coin to a given address.
 func (s *PrecompileTestSuite) mintAndSendXMPLCoin(ctx sdk.Context, addr sdk.AccAddress, amount math.Int) sdk.Context {

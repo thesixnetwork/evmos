@@ -72,7 +72,7 @@ func (s *PrecompileTestSuite) TestSetWithdrawAddressEvent() {
 		initialGas := ctx.GasMeter().GasConsumed()
 		s.Require().Zero(initialGas)
 
-		_, err := s.precompile.SetWithdrawAddress(ctx, stDB, s.keyring.GetAddr(0), contract.Caller(), &method, tc.malleate(s.network.GetValidators()[0].OperatorAddress), contract.Value(), true)
+		_, err := s.executor.SetWithdrawAddress(ctx, stDB, s.keyring.GetAddr(0), contract.Caller(), &method, tc.malleate(s.network.GetValidators()[0].OperatorAddress), contract.Value(), true)
 
 		if tc.expError {
 			s.Require().Error(err)
@@ -151,7 +151,7 @@ func (s *PrecompileTestSuite) TestWithdrawDelegatorRewardsEvent() {
 		initialGas := ctx.GasMeter().GasConsumed()
 		s.Require().Zero(initialGas)
 
-		_, err := s.precompile.WithdrawDelegatorRewards(ctx, stDB, s.keyring.GetAddr(0), contract.Caller(), &method, tc.malleate(s.network.GetValidators()[0]), contract.Value(), false)
+		_, err := s.executor.WithdrawDelegatorRewards(ctx, stDB, s.keyring.GetAddr(0), contract.Caller(), &method, tc.malleate(s.network.GetValidators()[0]), contract.Value(), false)
 
 		if tc.expError {
 			s.Require().Error(err)
@@ -231,7 +231,7 @@ func (s *PrecompileTestSuite) TestWithdrawValidatorCommissionEvent() {
 		initialGas := ctx.GasMeter().GasConsumed()
 		s.Require().Zero(initialGas)
 
-		_, err = s.precompile.WithdrawValidatorCommission(ctx, stDB, validatorAddress, contract.Caller(), &method, tc.malleate(s.network.GetValidators()[0].OperatorAddress), contract.Value(), false)
+		_, err = s.executor.WithdrawValidatorCommission(ctx, stDB, validatorAddress, contract.Caller(), &method, tc.malleate(s.network.GetValidators()[0].OperatorAddress), contract.Value(), false)
 
 		if tc.expError {
 			s.Require().Error(err)
@@ -278,7 +278,7 @@ func (s *PrecompileTestSuite) TestClaimRewardsEvent() {
 			s.SetupTest()
 			ctx = s.network.GetContext()
 			stDB = s.network.GetStateDB()
-			err := s.precompile.EmitClaimRewardsEvent(ctx, stDB, s.keyring.GetAddr(0), tc.coins)
+			err := s.executor.EmitClaimRewardsEvent(ctx, stDB, s.keyring.GetAddr(0), tc.coins)
 			s.Require().NoError(err)
 			tc.postCheck()
 		})
@@ -321,7 +321,7 @@ func (s *PrecompileTestSuite) TestFundCommunityPoolEvent() {
 			ctx = s.network.GetContext()
 			stDB = s.network.GetStateDB()
 
-			err := s.precompile.EmitFundCommunityPoolEvent(ctx, stDB, s.keyring.GetAddr(0), tc.coins)
+			err := s.executor.EmitFundCommunityPoolEvent(ctx, stDB, s.keyring.GetAddr(0), tc.coins)
 			s.Require().NoError(err)
 			tc.postCheck()
 		})

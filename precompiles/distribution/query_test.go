@@ -129,7 +129,7 @@ func (s *PrecompileTestSuite) TestValidatorDistributionInfo() {
 			ctx = s.network.GetContext()
 			contract := vm.NewPrecompile(vm.AccountRef(s.keyring.GetAddr(0)), s.precompile, big.NewInt(0), tc.gas)
 
-			bz, err := s.precompile.ValidatorDistributionInfo(ctx, contract, &method, tc.malleate())
+			bz, err := s.executor.ValidatorDistributionInfo(ctx, contract.CallerAddress, &method, tc.malleate())
 
 			if tc.expErr {
 				s.Require().Error(err)
@@ -222,7 +222,7 @@ func (s *PrecompileTestSuite) TestValidatorOutstandingRewards() {
 			ctx = s.network.GetContext()
 			contract := vm.NewPrecompile(vm.AccountRef(s.keyring.GetAddr(0)), s.precompile, big.NewInt(0), tc.gas)
 
-			bz, err := s.precompile.ValidatorOutstandingRewards(ctx, contract, &method, tc.malleate())
+			bz, err := s.executor.ValidatorOutstandingRewards(ctx, contract.CallerAddress, &method, tc.malleate())
 
 			if tc.expErr {
 				s.Require().Error(err)
@@ -320,7 +320,7 @@ func (s *PrecompileTestSuite) TestValidatorCommission() {
 			ctx = s.network.GetContext()
 			contract := vm.NewPrecompile(vm.AccountRef(s.keyring.GetAddr(0)), s.precompile, big.NewInt(0), tc.gas)
 
-			bz, err := s.precompile.ValidatorCommission(ctx, contract, &method, tc.malleate())
+			bz, err := s.executor.ValidatorCommission(ctx, contract.CallerAddress, &method, tc.malleate())
 
 			if tc.expErr {
 				s.Require().Error(err)
@@ -489,7 +489,7 @@ func (s *PrecompileTestSuite) TestValidatorSlashes() {
 			ctx = s.network.GetContext()
 			contract := vm.NewPrecompile(vm.AccountRef(s.keyring.GetAddr(0)), s.precompile, big.NewInt(0), tc.gas)
 
-			bz, err := s.precompile.ValidatorSlashes(ctx, contract, &method, tc.malleate())
+			bz, err := s.executor.ValidatorSlashes(ctx, contract.CallerAddress, &method, tc.malleate())
 
 			if tc.expErr {
 				s.Require().Error(err)
@@ -605,7 +605,7 @@ func (s *PrecompileTestSuite) TestDelegationRewards() {
 			contract := vm.NewPrecompile(vm.AccountRef(s.keyring.GetAddr(0)), s.precompile, big.NewInt(0), tc.gas)
 
 			args := tc.malleate()
-			bz, err := s.precompile.DelegationRewards(ctx, contract, &method, args)
+			bz, err := s.executor.DelegationRewards(ctx, contract.CallerAddress, &method, args)
 
 			if tc.expErr {
 				s.Require().Error(err)
@@ -739,7 +739,7 @@ func (s *PrecompileTestSuite) TestDelegationTotalRewards() {
 			contract := vm.NewPrecompile(vm.AccountRef(s.keyring.GetAddr(0)), s.precompile, big.NewInt(0), tc.gas)
 
 			args := tc.malleate()
-			bz, err := s.precompile.DelegationTotalRewards(ctx, contract, &method, args)
+			bz, err := s.executor.DelegationTotalRewards(ctx, contract.CallerAddress, &method, args)
 
 			if tc.expErr {
 				s.Require().Error(err)
@@ -822,7 +822,7 @@ func (s *PrecompileTestSuite) TestDelegatorValidators() {
 			ctx = s.network.GetContext()
 			contract := vm.NewPrecompile(vm.AccountRef(s.keyring.GetAddr(0)), s.precompile, big.NewInt(0), tc.gas)
 
-			bz, err := s.precompile.DelegatorValidators(ctx, contract, &method, tc.malleate())
+			bz, err := s.executor.DelegatorValidators(ctx, contract.CallerAddress, &method, tc.malleate())
 
 			if tc.expErr {
 				s.Require().Error(err)
@@ -879,7 +879,7 @@ func (s *PrecompileTestSuite) TestDelegatorWithdrawAddress() {
 			ctx = s.network.GetContext()
 			contract := vm.NewPrecompile(vm.AccountRef(s.keyring.GetAddr(0)), s.precompile, big.NewInt(0), tc.gas)
 
-			bz, err := s.precompile.DelegatorWithdrawAddress(ctx, contract, &method, tc.malleate())
+			bz, err := s.executor.DelegatorWithdrawAddress(ctx, contract.CallerAddress, &method, tc.malleate())
 
 			if tc.expErr {
 				s.Require().Error(err)

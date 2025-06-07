@@ -15,12 +15,12 @@ const (
 	Add
 )
 
-type balanceChangeEntry struct {
+type BalanceChangeEntry struct {
 	Account common.Address
 	Amount  *big.Int
 	Op      Operation
 }
 
-func NewBalanceChangeEntry(acc common.Address, amt *big.Int, op Operation) balanceChangeEntry { //nolint:revive
-	return balanceChangeEntry{acc, amt, op}
+func NewBalanceChangeEntry(acc common.Address, amt *big.Int, op Operation) BalanceChangeEntry { //nolint:revive
+	return BalanceChangeEntry{acc, amt, op}
 }

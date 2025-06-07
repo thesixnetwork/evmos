@@ -16,7 +16,7 @@ func (s *PrecompileTestSuite) TestBalances() {
 	var ctx sdk.Context
 	// setup test in order to have s.precompile, s.evmosAddr and s.xmplAddr defined
 	s.SetupTest()
-	method := s.precompile.Methods[bank.BalancesMethod]
+	method := s.precompile.GetABI().Methods[bank.BalancesMethod]
 
 	testcases := []struct {
 		name        string
@@ -108,7 +108,7 @@ func (s *PrecompileTestSuite) TestBalances() {
 		s.Run(tc.name, func() {
 			ctx = s.SetupTest() // reset the chain each test
 
-			bz, err := s.precompile.Balances(
+			bz, err := s.executor.Balances(
 				ctx,
 				common.Address{},
 				&method,
@@ -120,7 +120,7 @@ func (s *PrecompileTestSuite) TestBalances() {
 			if tc.expPass {
 				s.Require().NoError(err)
 				var balances []bank.Balance
-				err = s.precompile.UnpackIntoInterface(&balances, method.Name, bz)
+				err = s.precompile.GetABI().UnpackIntoInterface(&balances, method.Name, bz)
 				s.Require().NoError(err)
 				s.Require().Equal(tc.expBalances(s.evmosAddr, s.xmplAddr), balances)
 			} else {
@@ -134,7 +134,7 @@ func (s *PrecompileTestSuite) TestTotalSupply() {
 	var ctx sdk.Context
 	// setup test in order to have s.precompile, s.evmosAddr and s.xmplAddr defined
 	s.SetupTest()
-	method := s.precompile.Methods[bank.TotalSupplyMethod]
+	method := s.precompile.GetABI().Methods[bank.TotalSupplyMethod]
 
 	totSupplRes, err := s.grpcHandler.GetTotalSupply()
 	s.Require().NoError(err)
@@ -169,7 +169,7 @@ func (s *PrecompileTestSuite) TestTotalSupply() {
 		s.Run(tc.name, func() {
 			ctx = s.SetupTest()
 			tc.malleate()
-			bz, err := s.precompile.TotalSupply(
+			bz, err := s.executor.TotalSupply(
 				ctx,
 				common.Address{},
 				&method,
@@ -180,7 +180,7 @@ func (s *PrecompileTestSuite) TestTotalSupply() {
 
 			s.Require().NoError(err)
 			var balances []bank.Balance
-			err = s.precompile.UnpackIntoInterface(&balances, method.Name, bz)
+			err = s.precompile.GetABI().UnpackIntoInterface(&balances, method.Name, bz)
 			s.Require().NoError(err)
 			s.Require().Equal(tc.expSupply(s.evmosAddr, s.xmplAddr), balances)
 		})
@@ -190,7 +190,7 @@ func (s *PrecompileTestSuite) TestTotalSupply() {
 func (s *PrecompileTestSuite) TestSupplyOf() {
 	// setup test in order to have s.precompile, s.evmosAddr and s.xmplAddr defined
 	s.SetupTest()
-	method := s.precompile.Methods[bank.SupplyOfMethod]
+	method := s.precompile.GetABI().Methods[bank.SupplyOfMethod]
 
 	totSupplRes, err := s.grpcHandler.GetTotalSupply()
 	s.Require().NoError(err)
@@ -268,7 +268,7 @@ func (s *PrecompileTestSuite) TestSupplyOf() {
 		s.Run(tc.name, func() {
 			ctx := s.SetupTest()
 
-			bz, err := s.precompile.SupplyOf(
+			bz, err := s.executor.SupplyOf(
 				ctx,
 				common.Address{},
 				&method,

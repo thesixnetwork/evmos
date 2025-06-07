@@ -19,7 +19,7 @@ func (s *PrecompileTestSuite) TestVoteEvent() {
 	var (
 		stDB   *statedb.StateDB
 		ctx    sdk.Context
-		method = s.precompile.Methods[gov.VoteMethod]
+		method = s.precompile.GetABI().Methods[gov.VoteMethod]
 	)
 
 	testCases := []struct {
@@ -45,13 +45,13 @@ func (s *PrecompileTestSuite) TestVoteEvent() {
 				s.Require().Equal(log.Address, s.precompile.Address())
 
 				// Check event signature matches the one emitted
-				event := s.precompile.ABI.Events[gov.EventTypeVote]
+				event := s.precompile.GetABI().Events[gov.EventTypeVote]
 				s.Require().Equal(crypto.Keccak256Hash([]byte(event.Sig)), common.HexToHash(log.Topics[0].Hex()))
 				s.Require().Equal(log.BlockNumber, uint64(ctx.BlockHeight())) //nolint:gosec // G115
 
 				// Check the fully unpacked event matches the one emitted
 				var voteEvent gov.EventVote
-				err := cmn.UnpackLog(s.precompile.ABI, &voteEvent, gov.EventTypeVote, *log)
+				err := cmn.UnpackLog(s.precompile.GetABI(), &voteEvent, gov.EventTypeVote, *log)
 				s.Require().NoError(err)
 				s.Require().Equal(s.keyring.GetAddr(0), voteEvent.Voter)
 				s.Require().Equal(uint64(1), voteEvent.ProposalId)
@@ -73,7 +73,7 @@ func (s *PrecompileTestSuite) TestVoteEvent() {
 		initialGas := ctx.GasMeter().GasConsumed()
 		s.Require().Zero(initialGas)
 
-		_, err := s.precompile.Vote(ctx, s.keyring.GetAddr(0), contract.CallerAddress, stDB, &method, tc.malleate(s.keyring.GetAddr(0), 1, 1, "metadata"))
+		_, err := s.executor.Vote(ctx, s.keyring.GetAddr(0), contract.CallerAddress, stDB, &method, tc.malleate(s.keyring.GetAddr(0), 1, 1, "metadata"))
 
 		if tc.expError {
 			s.Require().Error(err)
@@ -89,7 +89,7 @@ func (s *PrecompileTestSuite) TestVoteWeightedEvent() {
 	var (
 		stDB   *statedb.StateDB
 		ctx    sdk.Context
-		method = s.precompile.Methods[gov.VoteWeightedMethod]
+		method = s.precompile.GetABI().Methods[gov.VoteWeightedMethod]
 	)
 
 	testCases := []struct {
@@ -115,13 +115,13 @@ func (s *PrecompileTestSuite) TestVoteWeightedEvent() {
 				s.Require().Equal(log.Address, s.precompile.Address())
 
 				// Check event signature matches the one emitted
-				event := s.precompile.ABI.Events[gov.EventTypeVoteWeighted]
+				event := s.precompile.GetABI().Events[gov.EventTypeVoteWeighted]
 				s.Require().Equal(crypto.Keccak256Hash([]byte(event.Sig)), common.HexToHash(log.Topics[0].Hex()))
 				s.Require().Equal(log.BlockNumber, uint64(ctx.BlockHeight())) //nolint:gosec // G115
 
 				// Check the fully unpacked event matches the one emitted
 				var voteWeightedEvent gov.EventVoteWeighted
-				err := cmn.UnpackLog(s.precompile.ABI, &voteWeightedEvent, gov.EventTypeVoteWeighted, *log)
+				err := cmn.UnpackLog(s.precompile.GetABI(), &voteWeightedEvent, gov.EventTypeVoteWeighted, *log)
 				s.Require().NoError(err)
 				s.Require().Equal(s.keyring.GetAddr(0), voteWeightedEvent.Voter)
 				s.Require().Equal(uint64(1), voteWeightedEvent.ProposalId)
@@ -153,7 +153,7 @@ func (s *PrecompileTestSuite) TestVoteWeightedEvent() {
 				{Option: 2, Weight: "0.30"},
 			}
 
-			_, err := s.precompile.VoteWeighted(ctx, s.keyring.GetAddr(0), contract.CallerAddress, stDB, &method, tc.malleate(s.keyring.GetAddr(0), 1, options))
+			_, err := s.executor.VoteWeighted(ctx, s.keyring.GetAddr(0), contract.CallerAddress, stDB, &method, tc.malleate(s.keyring.GetAddr(0), 1, options))
 
 			if tc.expError {
 				s.Require().Error(err)

@@ -40,12 +40,12 @@ const (
 	GasAllowance         = 3_246
 )
 
-// Embed abi json file to the executable binary. Needed when importing as dependency.
-//
 //go:embed abi.json
 var f embed.FS
 
-var _ vm.PrecompiledContract = &Precompile{}
+func GetABI() (abi.ABI, error) {
+	return cmn.LoadABI(f, "abi.json")
+}
 
 // Precompile defines the precompiled contract for ERC-20.
 type Precompile struct {

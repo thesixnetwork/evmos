@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/evmos/evmos/v20/utils"
-	"github.com/evmos/evmos/v20/x/evm/statedb"
+	// "github.com/evmos/evmos/v20/utils"
+	"github.com/evmos/evmos/v20/x/evm/core/vm"
 
 	cmn "github.com/evmos/evmos/v20/precompiles/common"
 
@@ -36,7 +36,7 @@ const (
 )
 
 // ClaimRewards claims the rewards accumulated by a delegator from multiple or all validators.
-func (p *Precompile) ClaimRewards(ctx sdk.Context, stateDB *statedb.StateDB, origin common.Address, caller common.Address, method *abi.Method, args []interface{}, value *big.Int, readOnly bool) ([]byte, error) {
+func (p *DistributionExecutor) ClaimRewards(ctx sdk.Context, stateDB vm.StateDB, origin common.Address, caller common.Address, method *abi.Method, args []interface{}, value *big.Int, readOnly bool) ([]byte, error) {
 	delegatorAddr, maxRetrieve, err := parseClaimRewardsArgs(args)
 	if err != nil {
 		return nil, err
@@ -83,11 +83,11 @@ func (p *Precompile) ClaimRewards(ctx sdk.Context, stateDB *statedb.StateDB, ori
 	// this happens when the precompile is called from a smart contract
 	if caller != origin {
 		// rewards go to the withdrawer address
-		withdrawerHexAddr, err := p.getWithdrawerHexAddr(ctx, delegatorAddr)
+		_, err := p.getWithdrawerHexAddr(ctx, delegatorAddr)
 		if err != nil {
 			return nil, err
 		}
-		p.SetBalanceChangeEntries(cmn.NewBalanceChangeEntry(withdrawerHexAddr, totalCoins.AmountOf(utils.BaseDenom).BigInt(), cmn.Add))
+		// p.SetBalanceChangeEntries(cmn.NewBalanceChangeEntry(withdrawerHexAddr, totalCoins.AmountOf(utils.BaseDenom).BigInt(), cmn.Add))
 	}
 
 	if err := p.EmitClaimRewardsEvent(ctx, stateDB, delegatorAddr, totalCoins); err != nil {
@@ -98,7 +98,7 @@ func (p *Precompile) ClaimRewards(ctx sdk.Context, stateDB *statedb.StateDB, ori
 }
 
 // SetWithdrawAddress sets the withdrawal address for a delegator (or validator self-delegation).
-func (p Precompile) SetWithdrawAddress(ctx sdk.Context, stateDB *statedb.StateDB, origin common.Address, caller common.Address, method *abi.Method, args []interface{}, value *big.Int, readOnly bool) ([]byte, error) {
+func (p DistributionExecutor) SetWithdrawAddress(ctx sdk.Context, stateDB vm.StateDB, origin common.Address, caller common.Address, method *abi.Method, args []interface{}, value *big.Int, readOnly bool) ([]byte, error) {
 	msg, delegatorHexAddr, err := NewMsgSetWithdrawAddress(args)
 	if err != nil {
 		return nil, err
@@ -124,7 +124,7 @@ func (p Precompile) SetWithdrawAddress(ctx sdk.Context, stateDB *statedb.StateDB
 }
 
 // WithdrawDelegatorRewards withdraws the rewards of a delegator from a single validator.
-func (p *Precompile) WithdrawDelegatorRewards(ctx sdk.Context, stateDB *statedb.StateDB, origin common.Address, caller common.Address, method *abi.Method, args []interface{}, value *big.Int, readOnly bool) ([]byte, error) {
+func (p *DistributionExecutor) WithdrawDelegatorRewards(ctx sdk.Context, stateDB vm.StateDB, origin common.Address, caller common.Address, method *abi.Method, args []interface{}, value *big.Int, readOnly bool) ([]byte, error) {
 	msg, delegatorHexAddr, err := NewMsgWithdrawDelegatorReward(args)
 	if err != nil {
 		return nil, err
@@ -148,11 +148,11 @@ func (p *Precompile) WithdrawDelegatorRewards(ctx sdk.Context, stateDB *statedb.
 	// This prevents the stateDB from overwriting the changed balance in the bank keeper when committing the EVM state.
 	if caller != origin {
 		// rewards go to the withdrawer address
-		withdrawerHexAddr, err := p.getWithdrawerHexAddr(ctx, delegatorHexAddr)
+		_, err := p.getWithdrawerHexAddr(ctx, delegatorHexAddr)
 		if err != nil {
 			return nil, err
 		}
-		p.SetBalanceChangeEntries(cmn.NewBalanceChangeEntry(withdrawerHexAddr, res.Amount[0].Amount.BigInt(), cmn.Add))
+		// p.SetBalanceChangeEntries(cmn.NewBalanceChangeEntry(withdrawerHexAddr, res.Amount[0].Amount.BigInt(), cmn.Add))
 	}
 
 	if err = p.EmitWithdrawDelegatorRewardsEvent(ctx, stateDB, delegatorHexAddr, msg.ValidatorAddress, res.Amount); err != nil {
@@ -163,7 +163,7 @@ func (p *Precompile) WithdrawDelegatorRewards(ctx sdk.Context, stateDB *statedb.
 }
 
 // WithdrawValidatorCommission withdraws the rewards of a validator.
-func (p *Precompile) WithdrawValidatorCommission(ctx sdk.Context, stateDB *statedb.StateDB, origin common.Address, caller common.Address, method *abi.Method, args []interface{}, value *big.Int, readOnly bool) ([]byte, error) {
+func (p *DistributionExecutor) WithdrawValidatorCommission(ctx sdk.Context, stateDB vm.StateDB, origin common.Address, caller common.Address, method *abi.Method, args []interface{}, value *big.Int, readOnly bool) ([]byte, error) {
 	msg, validatorHexAddr, err := NewMsgWithdrawValidatorCommission(args)
 	if err != nil {
 		return nil, err
@@ -187,11 +187,11 @@ func (p *Precompile) WithdrawValidatorCommission(ctx sdk.Context, stateDB *state
 	// This prevents the stateDB from overwriting the changed balance in the bank keeper when committing the EVM state.
 	if caller != origin {
 		// commissions go to the withdrawer address
-		withdrawerHexAddr, err := p.getWithdrawerHexAddr(ctx, validatorHexAddr)
+		_, err := p.getWithdrawerHexAddr(ctx, validatorHexAddr)
 		if err != nil {
 			return nil, err
 		}
-		p.SetBalanceChangeEntries(cmn.NewBalanceChangeEntry(withdrawerHexAddr, res.Amount[0].Amount.BigInt(), cmn.Add))
+		// p.SetBalanceChangeEntries(cmn.NewBalanceChangeEntry(withdrawerHexAddr, res.Amount[0].Amount.BigInt(), cmn.Add))
 	}
 
 	if err = p.EmitWithdrawValidatorCommissionEvent(ctx, stateDB, msg.ValidatorAddress, res.Amount); err != nil {
@@ -202,7 +202,7 @@ func (p *Precompile) WithdrawValidatorCommission(ctx sdk.Context, stateDB *state
 }
 
 // FundCommunityPool directly fund the community pool
-func (p *Precompile) FundCommunityPool(ctx sdk.Context, stateDB *statedb.StateDB, origin common.Address, caller common.Address, method *abi.Method, args []interface{}, value *big.Int, readOnly bool) ([]byte, error) {
+func (p *DistributionExecutor) FundCommunityPool(ctx sdk.Context, stateDB vm.StateDB, origin common.Address, caller common.Address, method *abi.Method, args []interface{}, value *big.Int, readOnly bool) ([]byte, error) {
 	msg, depositorHexAddr, err := NewMsgFundCommunityPool(args)
 	if err != nil {
 		return nil, err
@@ -225,7 +225,7 @@ func (p *Precompile) FundCommunityPool(ctx sdk.Context, stateDB *statedb.StateDB
 	// when calling the precompile from a smart contract
 	// This prevents the stateDB from overwriting the changed balance in the bank keeper when committing the EVM state.
 	if caller != origin {
-		p.SetBalanceChangeEntries(cmn.NewBalanceChangeEntry(depositorHexAddr, msg.Amount.AmountOf(utils.BaseDenom).BigInt(), cmn.Sub))
+		// p.SetBalanceChangeEntries(cmn.NewBalanceChangeEntry(depositorHexAddr, msg.Amount.AmountOf(utils.BaseDenom).BigInt(), cmn.Sub))
 	}
 
 	if err = p.EmitFundCommunityPoolEvent(ctx, stateDB, depositorHexAddr, msg.Amount); err != nil {
@@ -237,7 +237,7 @@ func (p *Precompile) FundCommunityPool(ctx sdk.Context, stateDB *statedb.StateDB
 
 // getWithdrawerHexAddr is a helper function to get the hex address
 // of the withdrawer for the specified account address
-func (p Precompile) getWithdrawerHexAddr(ctx sdk.Context, delegatorAddr common.Address) (common.Address, error) {
+func (p DistributionExecutor) getWithdrawerHexAddr(ctx sdk.Context, delegatorAddr common.Address) (common.Address, error) {
 	withdrawerAccAddr, err := p.distributionKeeper.GetDelegatorWithdrawAddr(ctx, delegatorAddr.Bytes())
 	if err != nil {
 		return common.Address{}, err

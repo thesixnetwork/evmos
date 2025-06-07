@@ -29,9 +29,9 @@ const (
 )
 
 // EmitClaimRewardsEvent creates a new event emitted on a ClaimRewards transaction.
-func (p Precompile) EmitClaimRewardsEvent(ctx sdk.Context, stateDB vm.StateDB, delegatorAddress common.Address, totalCoins sdk.Coins) error {
+func (p DistributionExecutor) EmitClaimRewardsEvent(ctx sdk.Context, stateDB vm.StateDB, delegatorAddress common.Address, totalCoins sdk.Coins) error {
 	// Prepare the event topics
-	event := p.Events[EventTypeClaimRewards]
+	event := p.GetABI().Events[EventTypeClaimRewards]
 	topics := make([]common.Hash, 2)
 
 	// The first topic is always the signature of the event.
@@ -66,9 +66,9 @@ func (p Precompile) EmitClaimRewardsEvent(ctx sdk.Context, stateDB vm.StateDB, d
 }
 
 // EmitSetWithdrawAddressEvent creates a new event emitted on a SetWithdrawAddressMethod transaction.
-func (p Precompile) EmitSetWithdrawAddressEvent(ctx sdk.Context, stateDB vm.StateDB, caller common.Address, withdrawerAddress string) error {
+func (p DistributionExecutor) EmitSetWithdrawAddressEvent(ctx sdk.Context, stateDB vm.StateDB, caller common.Address, withdrawerAddress string) error {
 	// Prepare the event topics
-	event := p.ABI.Events[EventTypeSetWithdrawAddress]
+	event := p.GetABI().Events[EventTypeSetWithdrawAddress]
 	topics := make([]common.Hash, 2)
 
 	// The first topic is always the signature of the event.
@@ -98,14 +98,14 @@ func (p Precompile) EmitSetWithdrawAddressEvent(ctx sdk.Context, stateDB vm.Stat
 }
 
 // EmitWithdrawDelegatorRewardsEvent creates a new event emitted on a WithdrawDelegatorRewards transaction.
-func (p Precompile) EmitWithdrawDelegatorRewardsEvent(ctx sdk.Context, stateDB vm.StateDB, delegatorAddress common.Address, validatorAddress string, coins sdk.Coins) error {
+func (p DistributionExecutor) EmitWithdrawDelegatorRewardsEvent(ctx sdk.Context, stateDB vm.StateDB, delegatorAddress common.Address, validatorAddress string, coins sdk.Coins) error {
 	valAddr, err := sdk.ValAddressFromBech32(validatorAddress)
 	if err != nil {
 		return err
 	}
 
 	// Prepare the event topics
-	event := p.ABI.Events[EventTypeWithdrawDelegatorRewards]
+	event := p.GetABI().Events[EventTypeWithdrawDelegatorRewards]
 	topics := make([]common.Hash, 3)
 
 	// The first topic is always the signature of the event.
@@ -136,9 +136,9 @@ func (p Precompile) EmitWithdrawDelegatorRewardsEvent(ctx sdk.Context, stateDB v
 }
 
 // EmitWithdrawValidatorCommissionEvent creates a new event emitted on a WithdrawValidatorCommission transaction.
-func (p Precompile) EmitWithdrawValidatorCommissionEvent(ctx sdk.Context, stateDB vm.StateDB, validatorAddress string, coins sdk.Coins) error {
+func (p DistributionExecutor) EmitWithdrawValidatorCommissionEvent(ctx sdk.Context, stateDB vm.StateDB, validatorAddress string, coins sdk.Coins) error {
 	// Prepare the event topics
-	event := p.ABI.Events[EventTypeWithdrawValidatorCommission]
+	event := p.GetABI().Events[EventTypeWithdrawValidatorCommission]
 	topics := make([]common.Hash, 2)
 
 	// The first topic is always the signature of the event.
@@ -165,9 +165,9 @@ func (p Precompile) EmitWithdrawValidatorCommissionEvent(ctx sdk.Context, stateD
 }
 
 // EmitFundCommunityPoolEvent creates a new event emitted on a FundCommunityPool transaction.
-func (p Precompile) EmitFundCommunityPoolEvent(ctx sdk.Context, stateDB vm.StateDB, depositor common.Address, coins sdk.Coins) error {
+func (p DistributionExecutor) EmitFundCommunityPoolEvent(ctx sdk.Context, stateDB vm.StateDB, depositor common.Address, coins sdk.Coins) error {
 	// Prepare the event topics
-	event := p.ABI.Events[EventTypeFundCommunityPool]
+	event := p.GetABI().Events[EventTypeFundCommunityPool]
 	topics := make([]common.Hash, 2)
 
 	// The first topic is always the signature of the event.

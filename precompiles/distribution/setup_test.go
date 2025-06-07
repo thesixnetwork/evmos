@@ -7,6 +7,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	distrtypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
 
+	cmn "github.com/evmos/evmos/v20/precompiles/common"
 	"github.com/evmos/evmos/v20/precompiles/distribution"
 	"github.com/evmos/evmos/v20/testutil/integration/evmos/factory"
 	"github.com/evmos/evmos/v20/testutil/integration/evmos/grpc"
@@ -24,10 +25,12 @@ type PrecompileTestSuite struct {
 	grpcHandler grpc.Handler
 	keyring     testkeyring.Keyring
 
-	precompile           *distribution.Precompile
 	bondDenom            string
 	validatorsKeys       []testkeyring.Key
 	withValidatorSlashes bool
+
+	precompile *cmn.Precompile
+	executor   *distribution.DistributionExecutor
 }
 
 func TestPrecompileUnitTestSuite(t *testing.T) {
@@ -92,4 +95,10 @@ func (s *PrecompileTestSuite) SetupTest() {
 	if err != nil {
 		panic(err)
 	}
+
+	s.executor = distribution.NewDistributionExecutor(
+		s.network.App.DistrKeeper,
+		s.network.App.StakingKeeper,
+		s.network.App.AuthzKeeper,
+	)
 }

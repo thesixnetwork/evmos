@@ -17,7 +17,7 @@ import (
 
 func (s *PrecompileTestSuite) TestVote() {
 	var ctx sdk.Context
-	method := s.precompile.Methods[gov.VoteMethod]
+	method := s.precompile.GetABI().Methods[gov.VoteMethod]
 	newVoterAddr := utiltx.GenerateAddress()
 	const proposalID uint64 = 1
 	const option uint8 = 1
@@ -131,7 +131,7 @@ func (s *PrecompileTestSuite) TestVote() {
 			var contract *vm.Contract
 			contract, ctx = testutil.NewPrecompileContract(s.T(), ctx, s.keyring.GetAddr(0), s.precompile, tc.gas)
 
-			_, err := s.precompile.Vote(ctx, s.keyring.GetAddr(0), contract.CallerAddress, s.network.GetStateDB(), &method, tc.malleate())
+			_, err := s.executor.Vote(ctx, s.keyring.GetAddr(0), contract.CallerAddress, s.network.GetStateDB(), &method, tc.malleate())
 
 			if tc.expError {
 				s.Require().ErrorContains(err, tc.errContains)
@@ -145,7 +145,7 @@ func (s *PrecompileTestSuite) TestVote() {
 
 func (s *PrecompileTestSuite) TestVoteWeighted() {
 	var ctx sdk.Context
-	method := s.precompile.Methods[gov.VoteWeightedMethod]
+	method := s.precompile.GetABI().Methods[gov.VoteWeightedMethod]
 	newVoterAddr := utiltx.GenerateAddress()
 	const proposalID uint64 = 1
 	const metadata = "metadata"
@@ -265,7 +265,7 @@ func (s *PrecompileTestSuite) TestVoteWeighted() {
 			var contract *vm.Contract
 			contract, ctx = testutil.NewPrecompileContract(s.T(), ctx, s.keyring.GetAddr(0), s.precompile, tc.gas)
 
-			_, err := s.precompile.VoteWeighted(ctx, s.keyring.GetAddr(0), contract.CallerAddress, s.network.GetStateDB(), &method, tc.malleate())
+			_, err := s.executor.VoteWeighted(ctx, s.keyring.GetAddr(0), contract.CallerAddress, s.network.GetStateDB(), &method, tc.malleate())
 
 			if tc.expError {
 				s.Require().ErrorContains(err, tc.errContains)
