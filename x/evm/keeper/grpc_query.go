@@ -10,8 +10,8 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/evmos/evmos/v20/x/evm/core/tracers/logger"
 	"github.com/evmos/evmos/v20/x/evm/core/tracers"
+	"github.com/evmos/evmos/v20/x/evm/core/tracers/logger"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -353,7 +353,7 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 			GasTipCap:         msg.GasTipCap,
 			Data:              msg.Data,
 			AccessList:        msg.AccessList,
-			BlobGasFeeCap: 	   msg.BlobGasFeeCap,
+			BlobGasFeeCap:     msg.BlobGasFeeCap,
 			BlobHashes:        msg.BlobHashes,
 			SkipAccountChecks: false,
 		}
@@ -631,7 +631,7 @@ func (k *Keeper) traceTx(
 		GasTipCap:         tx.GasTipCap(),
 		Data:              tx.Data(),
 		AccessList:        tx.AccessList(),
-		BlobGasFeeCap: 	   tx.BlobGasFeeCap(),
+		BlobGasFeeCap:     tx.BlobGasFeeCap(),
 		BlobHashes:        tx.BlobHashes(),
 		SkipAccountChecks: false,
 	}
@@ -929,4 +929,3 @@ func (k Keeper) EthCallWithOverride(c context.Context, req *types.EthCallWithOve
 
 	return res, nil
 }
-

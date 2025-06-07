@@ -195,6 +195,7 @@ func (pc precompileCallChange) revert(s *StateDB) {
 func (pc precompileCallChange) dirtied() *common.Address {
 	return nil
 }
+
 func (ch createObjectChange) revert(s *StateDB) {
 	delete(s.stateObjects, *ch.account)
 	// delete(s.stateObjectsDirty, *ch.account)

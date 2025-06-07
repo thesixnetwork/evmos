@@ -63,6 +63,7 @@ func ExistsEipActivator(eipName int) bool {
 	_, ok := activators[eipName]
 	return ok
 }
+
 func ActivateableEips() []string {
 	var nums []string
 	for k := range activators {

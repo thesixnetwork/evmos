@@ -231,7 +231,7 @@ func (s *PrecompileTestSuite) TestWithdrawValidatorCommissionEvent() {
 		initialGas := ctx.GasMeter().GasConsumed()
 		s.Require().Zero(initialGas)
 
-		_, err = s.precompile.WithdrawValidatorCommission(ctx, stDB, validatorAddress, contract.Caller(), &method, tc.malleate(s.network.GetValidators()[0].OperatorAddress),contract.Value(), false)
+		_, err = s.precompile.WithdrawValidatorCommission(ctx, stDB, validatorAddress, contract.Caller(), &method, tc.malleate(s.network.GetValidators()[0].OperatorAddress), contract.Value(), false)
 
 		if tc.expError {
 			s.Require().Error(err)

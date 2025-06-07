@@ -295,7 +295,7 @@ func (msg MsgEthereumTx) AsTransaction() *ethtypes.Transaction {
 }
 
 func (msg MsgEthereumTx) AsMessage(signer ethtypes.Signer, baseFee *big.Int) (core.Message, error) {
-	msgTx:= msg.AsTransaction()
+	msgTx := msg.AsTransaction()
 	// _, err := signer.Sender(msgTx)
 	// if err != nil {
 	// 	return core.Message{}, err

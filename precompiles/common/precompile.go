@@ -63,7 +63,7 @@ func (p Precompile) RequiredGas(input []byte) uint64 {
 	}
 	requiredGas := p.executor.RequiredGas(input[4:], method)
 
-	fmt.Printf(" ################# REQUIRED GAS: %v ################# \n",requiredGas)
+	fmt.Printf(" ################# REQUIRED GAS: %v ################# \n", requiredGas)
 	return requiredGas
 }
 
@@ -146,10 +146,10 @@ func (p Precompile) Prepare(evm *vm.EVM, input []byte, value *big.Int, readOnly 
 	return ctx, method, args, nil
 }
 
-func (p Precompile) NewSnapshot(statedb *statedb.StateDB, ctx sdk.Context ) snapshot {
+func (p Precompile) NewSnapshot(statedb *statedb.StateDB, ctx sdk.Context) snapshot {
 	return snapshot{
 		MultiStore: statedb.MultiStoreSnapshot(),
-		Events: ctx.EventManager().Events(),
+		Events:     ctx.EventManager().Events(),
 	}
 }
 
@@ -197,8 +197,8 @@ func HandleGasError(ctx sdk.Context, gas storetypes.Gas, initialGas storetypes.G
 // and precompileCall entries on the stateDB journal
 // This allows to revert the call changes within an evm tx
 func (p Precompile) AddJournalEntries(stateDB *statedb.StateDB, ctx sdk.Context) error {
-	s:= p.NewSnapshot(stateDB, ctx)
-	
+	s := p.NewSnapshot(stateDB, ctx)
+
 	for _, entry := range p.journalEntries {
 		switch entry.Op {
 		case Sub:

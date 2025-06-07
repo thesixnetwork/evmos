@@ -562,7 +562,7 @@ func (s *PrecompileTestSuite) TestFundCommunityPool() {
 			balance := s.network.App.BankKeeper.GetBalance(ctx, s.keyring.GetAddr(0).Bytes(), utils.BaseDenom)
 			s.Require().Equal(balance.Amount, network.PrefundedAccountInitialBalance)
 
-			bz, err := s.precompile.FundCommunityPool(ctx, s.network.GetStateDB(),s.keyring.GetAddr(0), contract.Caller(), &method, tc.malleate(), contract.Value(), false)
+			bz, err := s.precompile.FundCommunityPool(ctx, s.network.GetStateDB(), s.keyring.GetAddr(0), contract.Caller(), &method, tc.malleate(), contract.Value(), false)
 
 			if tc.expError {
 				s.Require().ErrorContains(err, tc.errContains)

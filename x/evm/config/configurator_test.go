@@ -81,7 +81,7 @@ func TestExtendedDefaultExtraEips(t *testing.T) {
 		{
 			"fail - invalid eip name",
 			func() *config.EVMConfigurator {
-				extendedDefaultExtraEIPs := []int{000}
+				extendedDefaultExtraEIPs := []int{0o00}
 				ec := config.NewEVMConfigurator().WithExtendedDefaultExtraEIPs(extendedDefaultExtraEIPs...)
 				return ec
 			},

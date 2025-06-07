@@ -335,13 +335,12 @@ message QueryBaseFeeResponse {
   string base_fee = 1 [(gogoproto.customtype) = "cosmossdk.io/math.Int"];
 }
 
-
 message OverrideAccount {
   uint64 nonce = 1;
   bytes code = 2;
   string balance = 3;
   map<string, string> state = 4;
-  map<string, string> state_diff = 5; 
+  map<string, string> state_diff = 5;
 }
 
 // StateOverride is a map of addresses to OverrideAccount.
@@ -359,7 +358,6 @@ message BlockOverrides {
   string base_fee = 7;
   string blob_base_fee = 8;
 }
-
 
 message TraceCallConfig {
   TraceConfig trace_config = 1;

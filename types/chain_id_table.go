@@ -8,22 +8,21 @@ import (
 // Chain ID constants
 const (
 	// COSMOS FORMAT CHAINID
-	ChainNameMainnet  = "sixnet"
-	ChainNameTestnet  = "fivenet"
+	ChainNameMainnet = "sixnet"
+	ChainNameTestnet = "fivenet"
 
 	// DEVELOPMENT COSMOS CHAIN ID
 	ChainNameLocalnet = "testnet"
 
 	// REGISTERED EVM CHAIN ID
-	ChainIDMainnet  = 98
-	ChainIDTestnet  = 150
+	ChainIDMainnet = 98
+	ChainIDTestnet = 150
 
 	// DEVELOPMENT EVM CHIAN ID
 	ChainIDLocalnet = 666
 
-
 	// CHAID ID EPOCH TO PREVENT DUPLICATE IN/IF MIGRATION FROCESS
-	ChainIDEpoch    = 1
+	ChainIDEpoch = 1
 )
 
 // ChainIdTable maps chain names to their corresponding numeric identifiers
@@ -45,7 +44,7 @@ func init() {
 // required by Evmos/Ethermint modules (chainName_chainID-epoch)
 func ChainIDTableModifier(chainID *string) {
 	*chainID = strings.TrimSpace(*chainID)
-	
+
 	// If the chain ID is recognized, format it according to Evmos/Ethermint conventions
 	if id, exists := chainIDMapping[*chainID]; exists {
 		*chainID = fmt.Sprintf("%s_%d-%d", *chainID, id, ChainIDEpoch)

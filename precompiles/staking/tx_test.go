@@ -1197,7 +1197,7 @@ func (s *PrecompileTestSuite) TestRedelegate() {
 				s.network.GetValidators()[0].OperatorAddress,
 				s.network.GetValidators()[1].OperatorAddress,
 			)
-			bz, err := s.precompile.Redelegate(ctx, delegator.Addr, contract.CallerAddress,s.network.GetStateDB(), &method, redelegateArgs)
+			bz, err := s.precompile.Redelegate(ctx, delegator.Addr, contract.CallerAddress, s.network.GetStateDB(), &method, redelegateArgs)
 
 			// query the redelegations in the staking keeper
 			redelegations, redelErr := s.network.App.StakingKeeper.GetRedelegations(ctx, delegator.AccAddr, 5)

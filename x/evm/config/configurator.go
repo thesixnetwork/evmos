@@ -59,7 +59,7 @@ func (ec *EVMConfigurator) Configure() error {
 			return fmt.Errorf("error configuring EVMConfigurator: EIP %v is already present in the default list: %v", eip, types.DefaultExtraEIPs)
 		}
 
-		if  !vm.ValidEip(eip) {
+		if !vm.ValidEip(eip) {
 			return fmt.Errorf("error configuring EVMConfigurator of %v", eip)
 		}
 
