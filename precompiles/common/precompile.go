@@ -19,6 +19,12 @@ import (
 
 const UnknownMethodCallGas uint64 = 3000
 
+type PrecompileExecutor interface {
+	RequiredGas([]byte, *abi.Method) uint64
+	Execute(ctx sdk.Context, method *abi.Method, caller common.Address, callingContract common.Address, args []interface{}, value *big.Int, readOnly bool, evm *vm.EVM) ([]byte, error)
+}
+
+
 // snapshot contains all state and events previous to the precompile call
 // This is needed to allow us to revert the changes
 // during the EVM execution
@@ -27,10 +33,6 @@ type snapshot struct {
 	Events     sdk.Events
 }
 
-type PrecompileExecutor interface {
-	RequiredGas([]byte, *abi.Method) uint64
-	Execute(ctx sdk.Context, method *abi.Method, caller common.Address, callingContract common.Address, args []interface{}, value *big.Int, readOnly bool, evm *vm.EVM) ([]byte, error)
-}
 type Precompile struct {
 	executor PrecompileExecutor
 	name     string
