@@ -5,6 +5,7 @@ package vesting_test
 import (
 	"testing"
 
+	cmn "github.com/evmos/evmos/v20/precompiles/common"
 	"github.com/evmos/evmos/v20/precompiles/vesting"
 	"github.com/evmos/evmos/v20/testutil/integration/evmos/factory"
 	"github.com/evmos/evmos/v20/testutil/integration/evmos/grpc"
@@ -24,6 +25,7 @@ type PrecompileTestSuite struct {
 	bondDenom string
 
 	precompile *vesting.Precompile
+	executor   *vesting.VestingExecutor
 }
 
 func TestPrecompileUnitTestSuite(t *testing.T) {
@@ -51,10 +53,17 @@ func (s *PrecompileTestSuite) SetupTest(nKeys int) {
 	s.keyring = keyring
 	s.network = nw
 
+	s.executor = vesting.NewVestingExecutor(
+		s.network.App.VestingKeeper,
+		s.network.App.AuthzKeeper,
+	)
+
 	if s.precompile, err = vesting.NewPrecompile(
 		s.network.App.VestingKeeper,
 		s.network.App.AuthzKeeper,
 	); err != nil {
 		panic(err)
 	}
+
+	s.precompile.Precompile = cmn.NewPrecompile(s.executor.GetABI(), s.executor, s.executor.Address(), "vesting")
 }

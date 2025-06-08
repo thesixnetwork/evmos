@@ -34,7 +34,7 @@ type PrecompileTestSuite struct {
 	keyring     testkeyring.Keyring
 
 	executor   *gov.GovExecutor
-	precompile *cmn.Precompile
+	precompile *gov.Precompile
 }
 
 func TestPrecompileUnitTestSuite(t *testing.T) {
@@ -100,11 +100,13 @@ func (s *PrecompileTestSuite) SetupTest() {
 		s.network.App.GovKeeper,
 		s.network.App.AuthzKeeper,
 	)
-	
+
 	if s.precompile, err = gov.NewPrecompile(
 		s.network.App.GovKeeper,
 		s.network.App.AuthzKeeper,
 	); err != nil {
 		panic(err)
 	}
+
+	s.precompile.Precompile = cmn.NewPrecompile(s.executor.GetABI(), s.executor, s.executor.Address(), "gov")
 }

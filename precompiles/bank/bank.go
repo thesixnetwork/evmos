@@ -1,11 +1,11 @@
 package bank
 
 import (
-	"bytes"
 	"embed"
 	"fmt"
 	"math/big"
 
+	"cosmossdk.io/log"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -26,41 +26,55 @@ const (
 	SupplyOfMethod    = "supplyOf"
 )
 
+var _ vm.PrecompiledContract = &Precompile{}
+var _ cmn.Executor = &BankExecutor{}
+
+type Precompile struct {
+	*cmn.Precompile
+}
+
+// BankExecutor implements business logic for precompile methods.
+type BankExecutor struct {
+	bankKeeper  bankkeeper.Keeper
+	erc20Keeper erc20keeper.Keeper
+
+	precompile *Precompile
+	address    common.Address
+}
+
 //go:embed abi.json
 var f embed.FS
 
 func GetABI() (abi.ABI, error) {
-	bz, err := f.ReadFile("abi.json")
+	return cmn.LoadABI(f, "abi.json")
+}
+
+// Constructor for the precompile contract.
+func NewPrecompile(bankKeeper bankkeeper.Keeper, erc20Keeper erc20keeper.Keeper) (*Precompile, error) {
+	abi, err := GetABI()
 	if err != nil {
-		return abi.ABI{}, fmt.Errorf("unable to read ABI: %w", err)
+		return nil, fmt.Errorf("error loading distribution ABI: %w", err)
 	}
-	return abi.JSON(bytes.NewReader(bz))
+	precompile := &Precompile{}
+	executor := &BankExecutor{
+		bankKeeper:  bankKeeper,
+		erc20Keeper: erc20Keeper,
+		address:     common.HexToAddress(evmtypes.BankPrecompileAddress),
+		precompile:  precompile,
+	}
+	precompile.Precompile = cmn.NewPrecompile(abi, executor, executor.address, "bank")
+	return precompile, nil
 }
 
-type BankExecutor struct {
-	bankKeeper  bankkeeper.Keeper
-	erc20Keeper erc20keeper.Keeper
-	address     common.Address
-}
-
-func NewBankExecutor(bk bankkeeper.Keeper, ek erc20keeper.Keeper) *BankExecutor {
+func NewBankExecutor(bankKeeper bankkeeper.Keeper, erc20Keeper erc20keeper.Keeper) *BankExecutor {
 	return &BankExecutor{
-		bankKeeper:  bk,
-		erc20Keeper: ek,
+		bankKeeper:  bankKeeper,
+		erc20Keeper: erc20Keeper,
 		address:     common.HexToAddress(evmtypes.BankPrecompileAddress),
 	}
 }
 
-func NewPrecompile(bankKeeper bankkeeper.Keeper, erc20Keeper erc20keeper.Keeper) (*cmn.Precompile, error) {
-	abiDef, err := GetABI()
-	if err != nil {
-		return nil, err
-	}
-	exec := NewBankExecutor(bankKeeper, erc20Keeper)
-	return cmn.NewPrecompile(abiDef, exec, exec.address, "bank"), nil
-}
-
-// Implements cmn.Executor
+// cmn.Executor interface implementations:
 func (e *BankExecutor) RequiredGas(input []byte, method *abi.Method) uint64 {
 	switch method.Name {
 	case BalancesMethod:
@@ -77,8 +91,7 @@ func (e *BankExecutor) RequiredGas(input []byte, method *abi.Method) uint64 {
 func (e *BankExecutor) Execute(
 	ctx sdk.Context,
 	method *abi.Method,
-	caller common.Address,
-	callingContract common.Address,
+	caller, callingContract common.Address,
 	args []interface{},
 	value *big.Int,
 	readOnly bool,
@@ -97,12 +110,10 @@ func (e *BankExecutor) Execute(
 }
 
 func (e *BankExecutor) IsTransaction(method string) bool {
-	// All methods are queries for this precompile
 	return false
 }
 
 func (e *BankExecutor) Address() common.Address {
-	// All methods are queries for this precompile
 	return e.address
 }
 
@@ -113,4 +124,9 @@ func (e *BankExecutor) GetABI() abi.ABI {
 		panic(err)
 	}
 	return abi
+}
+
+// Logger returns a precompile-specific logger.
+func (p BankExecutor) Logger(ctx sdk.Context) log.Logger {
+	return ctx.Logger().With("evm extension", "staking")
 }

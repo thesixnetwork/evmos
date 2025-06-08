@@ -17,6 +17,21 @@ import (
 	evmtypes "github.com/evmos/evmos/v20/x/evm/types"
 )
 
+var _ vm.PrecompiledContract = &Precompile{}
+var _ cmn.Executor = &GovExecutor{}
+
+type Precompile struct {
+	*cmn.Precompile
+}
+
+type GovExecutor struct {
+	govKeeper   govkeeper.Keeper
+	authzKeeper authzkeeper.Keeper
+
+	precompile *Precompile
+	address    common.Address
+}
+
 //go:embed abi.json
 var f embed.FS
 
@@ -24,10 +39,20 @@ func GetABI() (abi.ABI, error) {
 	return cmn.LoadABI(f, "abi.json")
 }
 
-type GovExecutor struct {
-	govKeeper   govkeeper.Keeper
-	authzKeeper authzkeeper.Keeper
-	address     common.Address
+func NewPrecompile(govKeeper govkeeper.Keeper, authzKeeper authzkeeper.Keeper) (*Precompile, error) {
+	abi, err := GetABI()
+	if err != nil {
+		return nil, err
+	}
+	precompile := &Precompile{}
+	executor := &GovExecutor{
+		govKeeper:   govKeeper,
+		authzKeeper: authzKeeper,
+		address:     common.HexToAddress(evmtypes.GovPrecompileAddress),
+		precompile:  precompile,
+	}
+	precompile.Precompile = cmn.NewPrecompile(abi, executor, executor.address, "gov")
+	return precompile, nil
 }
 
 func NewGovExecutor(gk govkeeper.Keeper, ak authzkeeper.Keeper) *GovExecutor {
@@ -36,15 +61,6 @@ func NewGovExecutor(gk govkeeper.Keeper, ak authzkeeper.Keeper) *GovExecutor {
 		authzKeeper: ak,
 		address:     common.HexToAddress(evmtypes.GovPrecompileAddress),
 	}
-}
-
-func NewPrecompile(govKeeper govkeeper.Keeper, authzKeeper authzkeeper.Keeper) (*cmn.Precompile, error) {
-	abi, err := GetABI()
-	if err != nil {
-		return nil, err
-	}
-	exec := NewGovExecutor(govKeeper, authzKeeper)
-	return cmn.NewPrecompile(abi, exec, exec.address, "gov"), nil
 }
 
 func (e *GovExecutor) RequiredGas(input []byte, method *abi.Method) uint64 {

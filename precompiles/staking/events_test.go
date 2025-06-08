@@ -83,7 +83,7 @@ func (s *PrecompileTestSuite) TestApprovalEvent() {
 			s.Require().NoError(err)
 
 			approveArgs := tc.malleate(grantee.Addr)
-			_, err = s.precompile.Approve(ctx, granter.Addr, stDB, &method, approveArgs)
+			_, err = s.executor.Approve(ctx, granter.Addr, stDB, &method, approveArgs)
 
 			if tc.expErr {
 				s.Require().Error(err)
@@ -156,11 +156,11 @@ func (s *PrecompileTestSuite) TestIncreaseAllowanceEvent() {
 
 			// Approve first with 1 evmos
 			approveArgs := tc.malleate(grantee.Addr)
-			_, err = s.precompile.Approve(ctx, granter.Addr, stDB, &approvalMethod, approveArgs)
+			_, err = s.executor.Approve(ctx, granter.Addr, stDB, &approvalMethod, approveArgs)
 			s.Require().NoError(err)
 
 			// Increase allowance after approval
-			_, err = s.precompile.IncreaseAllowance(ctx, granter.Addr, stDB, &method, approveArgs)
+			_, err = s.executor.IncreaseAllowance(ctx, granter.Addr, stDB, &method, approveArgs)
 
 			if tc.expErr {
 				s.Require().Error(err)
@@ -241,11 +241,11 @@ func (s *PrecompileTestSuite) TestDecreaseAllowanceEvent() {
 					staking.RedelegateMsg,
 				},
 			}
-			_, err = s.precompile.Approve(ctx, granter.Addr, stDB, &approvalMethod, args)
+			_, err = s.executor.Approve(ctx, granter.Addr, stDB, &approvalMethod, args)
 			s.Require().NoError(err)
 
 			// Decrease allowance after approval
-			_, err = s.precompile.DecreaseAllowance(ctx, granter.Addr, stDB, &method, tc.malleate(grantee.Addr))
+			_, err = s.executor.DecreaseAllowance(ctx, granter.Addr, stDB, &method, tc.malleate(grantee.Addr))
 
 			if tc.expErr {
 				s.Require().Error(err)
@@ -324,7 +324,7 @@ func (s *PrecompileTestSuite) TestCreateValidatorEvent() {
 			delegator := s.keyring.GetKey(0)
 
 			contract := vm.NewPrecompile(vm.AccountRef(delegator.Addr), s.precompile, big.NewInt(0), 200000)
-			_, err := s.precompile.CreateValidator(ctx, delegator.Addr, contract.Caller(), stDB, &method, tc.malleate(delegator.Addr))
+			_, err := s.executor.CreateValidator(ctx, delegator.Addr, contract.Caller(), stDB, &method, tc.malleate(delegator.Addr))
 
 			if tc.expErr {
 				s.Require().Error(err)
@@ -401,7 +401,7 @@ func (s *PrecompileTestSuite) TestEditValidatorEvent() {
 			valOperAddr = common.BytesToAddress(acc.Bytes())
 
 			contract := vm.NewPrecompile(vm.AccountRef(valOperAddr), s.precompile, big.NewInt(0), 200000)
-			_, err = s.precompile.EditValidator(ctx, valOperAddr, contract.CallerAddress, stDB, &method, tc.malleate())
+			_, err = s.executor.EditValidator(ctx, valOperAddr, contract.CallerAddress, stDB, &method, tc.malleate())
 
 			if tc.expErr {
 				s.Require().Error(err)
@@ -478,7 +478,7 @@ func (s *PrecompileTestSuite) TestDelegateEvent() {
 			s.Require().NoError(err)
 
 			contract := vm.NewPrecompile(vm.AccountRef(delegator.Addr), s.precompile, big.NewInt(0), 20000)
-			_, err = s.precompile.Delegate(ctx, delegator.Addr, contract.CallerAddress, stDB, &method, tc.malleate(delegator.Addr))
+			_, err = s.executor.Delegate(ctx, delegator.Addr, contract.CallerAddress, stDB, &method, tc.malleate(delegator.Addr))
 
 			if tc.expErr {
 				s.Require().Error(err)
@@ -551,7 +551,7 @@ func (s *PrecompileTestSuite) TestUnbondEvent() {
 			s.Require().NoError(err)
 
 			contract := vm.NewPrecompile(vm.AccountRef(delegator.Addr), s.precompile, big.NewInt(0), 20000)
-			_, err = s.precompile.Undelegate(ctx, delegator.Addr, contract.CallerAddress, stDB, &method, tc.malleate(delegator.Addr))
+			_, err = s.executor.Undelegate(ctx, delegator.Addr, contract.CallerAddress, stDB, &method, tc.malleate(delegator.Addr))
 
 			if tc.expErr {
 				s.Require().Error(err)
@@ -629,7 +629,7 @@ func (s *PrecompileTestSuite) TestRedelegateEvent() {
 			s.Require().NoError(err)
 
 			contract := vm.NewPrecompile(vm.AccountRef(delegator.Addr), s.precompile, big.NewInt(0), 20000)
-			_, err = s.precompile.Redelegate(ctx, delegator.Addr, contract.CallerAddress, stDB, &method, tc.malleate(delegator.Addr))
+			_, err = s.executor.Redelegate(ctx, delegator.Addr, contract.CallerAddress, stDB, &method, tc.malleate(delegator.Addr))
 			s.Require().NoError(err)
 
 			if tc.expErr {
@@ -667,7 +667,7 @@ func (s *PrecompileTestSuite) TestCancelUnbondingDelegationEvent() {
 					s.network.GetValidators()[0].OperatorAddress,
 					big.NewInt(1000000000000000000),
 				}
-				_, err = s.precompile.Undelegate(ctx, delegator.Addr, contract.CallerAddress, stDB, &methodUndelegate, undelegateArgs)
+				_, err = s.executor.Undelegate(ctx, delegator.Addr, contract.CallerAddress, stDB, &methodUndelegate, undelegateArgs)
 				s.Require().NoError(err)
 
 				return []interface{}{
@@ -717,7 +717,7 @@ func (s *PrecompileTestSuite) TestCancelUnbondingDelegationEvent() {
 
 			contract := vm.NewPrecompile(vm.AccountRef(delegator.Addr), s.precompile, big.NewInt(0), 20000)
 			callArgs := tc.malleate(contract, delegator, grantee)
-			_, err = s.precompile.CancelUnbondingDelegation(ctx, delegator.Addr, contract.CallerAddress, stDB, &methodCancelUnbonding, callArgs)
+			_, err = s.executor.CancelUnbondingDelegation(ctx, delegator.Addr, contract.CallerAddress, stDB, &methodCancelUnbonding, callArgs)
 			s.Require().NoError(err)
 
 			if tc.expErr {

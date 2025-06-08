@@ -3,6 +3,7 @@ package staking_test
 import (
 	"testing"
 
+	cmn "github.com/evmos/evmos/v20/precompiles/common"
 	"github.com/evmos/evmos/v20/precompiles/staking"
 	"github.com/evmos/evmos/v20/testutil/integration/evmos/factory"
 	"github.com/evmos/evmos/v20/testutil/integration/evmos/grpc"
@@ -21,6 +22,7 @@ type PrecompileTestSuite struct {
 
 	bondDenom  string
 	precompile *staking.Precompile
+	executor   *staking.StakingExecutor
 }
 
 func TestPrecompileUnitTestSuite(t *testing.T) {
@@ -48,10 +50,17 @@ func (s *PrecompileTestSuite) SetupTest() {
 	s.keyring = keyring
 	s.network = nw
 
+	s.executor = staking.NewStakingExecutor(
+		s.network.App.StakingKeeper,
+		s.network.App.AuthzKeeper,
+	)
+
 	if s.precompile, err = staking.NewPrecompile(
 		s.network.App.StakingKeeper,
 		s.network.App.AuthzKeeper,
 	); err != nil {
 		panic(err)
 	}
+
+	s.precompile.Precompile = cmn.NewPrecompile(s.executor.GetABI(), s.executor, s.executor.Address(), "staking")
 }

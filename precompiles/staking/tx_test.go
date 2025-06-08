@@ -300,7 +300,7 @@ func (s *PrecompileTestSuite) TestCreateValidator() {
 				contract.CallerAddress = *tc.callerAddress
 			}
 
-			bz, err := s.precompile.CreateValidator(ctx, validatorAddress, contract.CallerAddress, stDB, &method, tc.malleate())
+			bz, err := s.executor.CreateValidator(ctx, validatorAddress, contract.CallerAddress, stDB, &method, tc.malleate())
 
 			if tc.expError {
 				s.Require().ErrorContains(err, tc.errContains)
@@ -657,7 +657,7 @@ func (s *PrecompileTestSuite) TestEditValidator() {
 				contract.CallerAddress = *tc.callerAddress
 			}
 
-			bz, err := s.precompile.EditValidator(ctx, validatorAddress, contract.CallerAddress, stDB, &method, tc.malleate())
+			bz, err := s.executor.EditValidator(ctx, validatorAddress, contract.CallerAddress, stDB, &method, tc.malleate())
 
 			if tc.expError {
 				s.Require().ErrorContains(err, tc.errContains)
@@ -899,7 +899,7 @@ func (s *PrecompileTestSuite) TestDelegate() {
 				grantee,
 				s.network.GetValidators()[0].OperatorAddress,
 			)
-			bz, err := s.precompile.Delegate(ctx, delegator.Addr, contract.CallerAddress, stDB, &method, delegateArgs)
+			bz, err := s.executor.Delegate(ctx, delegator.Addr, contract.CallerAddress, stDB, &method, delegateArgs)
 
 			// query the delegation in the staking keeper
 			valAddr, valErr := sdk.ValAddressFromBech32(s.network.GetValidators()[0].OperatorAddress)
@@ -1041,7 +1041,7 @@ func (s *PrecompileTestSuite) TestUndelegate() {
 			contract, ctx = testutil.NewPrecompileContract(s.T(), ctx, delegator.Addr, s.precompile, tc.gas)
 
 			undelegateArgs := tc.malleate(delegator, grantee, s.network.GetValidators()[0].OperatorAddress)
-			bz, err := s.precompile.Undelegate(ctx, delegator.Addr, contract.CallerAddress, stDB, &method, undelegateArgs)
+			bz, err := s.executor.Undelegate(ctx, delegator.Addr, contract.CallerAddress, stDB, &method, undelegateArgs)
 
 			// query the unbonding delegations in the staking keeper
 			undelegations, _ := s.network.App.StakingKeeper.GetAllUnbondingDelegations(ctx, delegator.AccAddr)
@@ -1197,7 +1197,7 @@ func (s *PrecompileTestSuite) TestRedelegate() {
 				s.network.GetValidators()[0].OperatorAddress,
 				s.network.GetValidators()[1].OperatorAddress,
 			)
-			bz, err := s.precompile.Redelegate(ctx, delegator.Addr, contract.CallerAddress, s.network.GetStateDB(), &method, redelegateArgs)
+			bz, err := s.executor.Redelegate(ctx, delegator.Addr, contract.CallerAddress, s.network.GetStateDB(), &method, redelegateArgs)
 
 			// query the redelegations in the staking keeper
 			redelegations, redelErr := s.network.App.StakingKeeper.GetRedelegations(ctx, delegator.AccAddr, 5)
@@ -1363,7 +1363,7 @@ func (s *PrecompileTestSuite) TestCancelUnbondingDelegation() {
 			cancelArgs := tc.malleate(delegator, grantee, s.network.GetValidators()[0].OperatorAddress)
 
 			if tc.expError {
-				bz, err := s.precompile.CancelUnbondingDelegation(ctx, delegator.Addr, contract.CallerAddress, stDB, &method, cancelArgs)
+				bz, err := s.executor.CancelUnbondingDelegation(ctx, delegator.Addr, contract.CallerAddress, stDB, &method, cancelArgs)
 				s.Require().ErrorContains(err, tc.errContains)
 				s.Require().Empty(bz)
 			} else {
@@ -1377,7 +1377,7 @@ func (s *PrecompileTestSuite) TestCancelUnbondingDelegation() {
 				err := s.CreateAuthorization(ctx, delegator.AccAddr, grantee.AccAddr, staking.UndelegateAuthz, nil)
 				s.Require().NoError(err)
 
-				_, err = s.precompile.Undelegate(ctx, delegator.Addr, contract.CallerAddress, stDB, &undelegateMethod, undelegateArgs)
+				_, err = s.executor.Undelegate(ctx, delegator.Addr, contract.CallerAddress, stDB, &undelegateMethod, undelegateArgs)
 				s.Require().NoError(err)
 
 				valAddr, err := sdk.ValAddressFromBech32(s.network.GetValidators()[0].GetOperator())
@@ -1390,7 +1390,7 @@ func (s *PrecompileTestSuite) TestCancelUnbondingDelegation() {
 				err = s.CreateAuthorization(ctx, delegator.AccAddr, grantee.AccAddr, staking.CancelUnbondingDelegationAuthz, nil)
 				s.Require().NoError(err)
 
-				bz, err := s.precompile.CancelUnbondingDelegation(ctx, delegator.Addr, contract.CallerAddress, stDB, &method, cancelArgs)
+				bz, err := s.executor.CancelUnbondingDelegation(ctx, delegator.Addr, contract.CallerAddress, stDB, &method, cancelArgs)
 				s.Require().NoError(err)
 				tc.postCheck(bz)
 

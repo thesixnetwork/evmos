@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"math/big"
 
-	// "github.com/evmos/evmos/v20/utils"
+	"github.com/evmos/evmos/v20/utils"
 	"github.com/evmos/evmos/v20/x/evm/core/vm"
 
 	cmn "github.com/evmos/evmos/v20/precompiles/common"
@@ -83,11 +83,11 @@ func (p *DistributionExecutor) ClaimRewards(ctx sdk.Context, stateDB vm.StateDB,
 	// this happens when the precompile is called from a smart contract
 	if caller != origin {
 		// rewards go to the withdrawer address
-		_, err := p.getWithdrawerHexAddr(ctx, delegatorAddr)
+		withdrawerHexAddr, err := p.getWithdrawerHexAddr(ctx, delegatorAddr)
 		if err != nil {
 			return nil, err
 		}
-		// p.SetBalanceChangeEntries(cmn.NewBalanceChangeEntry(withdrawerHexAddr, totalCoins.AmountOf(utils.BaseDenom).BigInt(), cmn.Add))
+		p.precompile.SetBalanceChangeEntries(cmn.NewBalanceChangeEntry(withdrawerHexAddr, totalCoins.AmountOf(utils.BaseDenom).BigInt(), cmn.Add))
 	}
 
 	if err := p.EmitClaimRewardsEvent(ctx, stateDB, delegatorAddr, totalCoins); err != nil {
@@ -148,11 +148,11 @@ func (p *DistributionExecutor) WithdrawDelegatorRewards(ctx sdk.Context, stateDB
 	// This prevents the stateDB from overwriting the changed balance in the bank keeper when committing the EVM state.
 	if caller != origin {
 		// rewards go to the withdrawer address
-		_, err := p.getWithdrawerHexAddr(ctx, delegatorHexAddr)
+		withdrawerHexAddr, err := p.getWithdrawerHexAddr(ctx, delegatorHexAddr)
 		if err != nil {
 			return nil, err
 		}
-		// p.SetBalanceChangeEntries(cmn.NewBalanceChangeEntry(withdrawerHexAddr, res.Amount[0].Amount.BigInt(), cmn.Add))
+		p.precompile.SetBalanceChangeEntries(cmn.NewBalanceChangeEntry(withdrawerHexAddr, res.Amount[0].Amount.BigInt(), cmn.Add))
 	}
 
 	if err = p.EmitWithdrawDelegatorRewardsEvent(ctx, stateDB, delegatorHexAddr, msg.ValidatorAddress, res.Amount); err != nil {
@@ -187,11 +187,11 @@ func (p *DistributionExecutor) WithdrawValidatorCommission(ctx sdk.Context, stat
 	// This prevents the stateDB from overwriting the changed balance in the bank keeper when committing the EVM state.
 	if caller != origin {
 		// commissions go to the withdrawer address
-		_, err := p.getWithdrawerHexAddr(ctx, validatorHexAddr)
+		withdrawerHexAddr, err := p.getWithdrawerHexAddr(ctx, validatorHexAddr)
 		if err != nil {
 			return nil, err
 		}
-		// p.SetBalanceChangeEntries(cmn.NewBalanceChangeEntry(withdrawerHexAddr, res.Amount[0].Amount.BigInt(), cmn.Add))
+		p.precompile.SetBalanceChangeEntries(cmn.NewBalanceChangeEntry(withdrawerHexAddr, res.Amount[0].Amount.BigInt(), cmn.Add))
 	}
 
 	if err = p.EmitWithdrawValidatorCommissionEvent(ctx, stateDB, msg.ValidatorAddress, res.Amount); err != nil {

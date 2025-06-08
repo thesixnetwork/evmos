@@ -25,7 +25,7 @@ var (
 )
 
 // Approve is the precompile function for approving vesting transactions with a generic grant.
-func (p Precompile) Approve(
+func (p VestingExecutor) Approve(
 	ctx sdk.Context,
 	origin common.Address,
 	stateDB vm.StateDB,
@@ -39,7 +39,7 @@ func (p Precompile) Approve(
 
 	switch typeURL {
 	case FundVestingAccountMsgURL, ClawbackMsgURL, UpdateVestingFunderMsgURL:
-		if err := CreateGenericAuthz(ctx, p.AuthzKeeper, grantee, origin, typeURL); err != nil {
+		if err := CreateGenericAuthz(ctx, p.authzKeeper, grantee, origin, typeURL); err != nil {
 			return nil, err
 		}
 	default:

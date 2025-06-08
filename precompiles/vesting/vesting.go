@@ -7,15 +7,16 @@ import (
 	"embed"
 	"fmt"
 	"math/big"
-
-	"github.com/evmos/evmos/v20/precompiles/authorization"
+	"time"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"cosmossdk.io/log"
 	storetypes "cosmossdk.io/store/types"
 	authzkeeper "github.com/cosmos/cosmos-sdk/x/authz/keeper"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/evmos/evmos/v20/precompiles/authorization"
 	cmn "github.com/evmos/evmos/v20/precompiles/common"
 	"github.com/evmos/evmos/v20/x/evm/core/vm"
 	"github.com/evmos/evmos/v20/x/evm/statedb"
@@ -27,34 +28,30 @@ import (
 const PrecompileAddress = "0x0000000000000000000000000000000000000803"
 
 var _ vm.PrecompiledContract = &Precompile{}
-
-// Embed abi json file to the executable binary. Needed when importing as dependency.
-//
-//go:embed abi.json
-var f embed.FS
+var _ cmn.Executor = &VestingExecutor{}
 
 // Precompile defines the precompiled contract for staking.
 type Precompile struct {
-	cmn.Precompile
-	vestingKeeper vestingkeeper.Keeper
+	*cmn.Precompile
 }
 
-// RequiredGas returns the required bare minimum gas to execute the precompile.
-func (p Precompile) RequiredGas(input []byte) uint64 {
-	// NOTE: This check avoid panicking when trying to decode the method ID
-	if len(input) < 4 {
-		return 0
-	}
+// VestingExecutor is the implementation of the vesting executor contract logic.
+type VestingExecutor struct {
+	vestingKeeper    vestingkeeper.Keeper
+	authzKeeper      authzkeeper.Keeper
+	expiration       time.Duration
+	kvGasConfig      storetypes.GasConfig
+	transientGasConf storetypes.GasConfig
 
-	methodID := input[:4]
+	precompile *Precompile
+	address    common.Address
+}
 
-	method, err := p.MethodById(methodID)
-	if err != nil {
-		// This should never happen since this method is going to fail during Run
-		return 0
-	}
+//go:embed abi.json
+var f embed.FS
 
-	return cmn.DefaultGasCost(input, p.IsTransaction(method.Name))
+func GetABI() (abi.ABI, error) {
+	return cmn.LoadABI(f, "abi.json")
 }
 
 // NewPrecompile creates a new vesting Precompile instance as a
@@ -63,101 +60,118 @@ func NewPrecompile(
 	vestingKeeper vestingkeeper.Keeper,
 	authzKeeper authzkeeper.Keeper,
 ) (*Precompile, error) {
-	newAbi, err := cmn.LoadABI(f, "abi.json")
-	if err != nil {
-		return nil, fmt.Errorf("error loading the staking ABI %s", err)
-	}
-
-	p := &Precompile{
-		Precompile: cmn.Precompile{
-			ABI:                  newAbi,
-			AuthzKeeper:          authzKeeper,
-			KvGasConfig:          storetypes.KVGasConfig(),
-			TransientKVGasConfig: storetypes.TransientGasConfig(),
-			ApprovalExpiration:   cmn.DefaultExpirationDuration, // should be configurable in the future.
-		},
-		vestingKeeper: vestingKeeper,
-	}
-
-	// SetAddress defines the address of the vesting precompiled contract.
-	p.SetAddress(common.HexToAddress(evmtypes.VestingPrecompileAddress))
-
-	return p, nil
-}
-
-// Run executes the precompiled contract staking methods defined in the ABI.
-func (p Precompile) Run(evm *vm.EVM, caller common.Address, callingContract common.Address, input []byte, value *big.Int, readOnly bool) (bz []byte, err error) {
-	ctx, method, args, err := p.Prepare(evm, input, value, readOnly)
+	abi, err := GetABI()
 	if err != nil {
 		return nil, err
 	}
 
+	precompile := &Precompile{}
+	executor := &VestingExecutor{
+		vestingKeeper:    vestingKeeper,
+		authzKeeper:      authzKeeper,
+		address:          common.HexToAddress(evmtypes.VestingPrecompileAddress),
+		expiration:       cmn.DefaultExpirationDuration,
+		kvGasConfig:      storetypes.KVGasConfig(),
+		transientGasConf: storetypes.TransientGasConfig(),
+		precompile:       precompile,
+	}
+	precompile.Precompile = cmn.NewPrecompile(abi, executor, executor.address, "vesting")
+	return precompile, nil
+}
+
+// NewVestingExecutor creates a new instance of the VestingExecutor.
+func NewVestingExecutor(
+	vestingKeeper vestingkeeper.Keeper,
+	authzKeeper authzkeeper.Keeper,
+) *VestingExecutor {
+	return &VestingExecutor{
+		vestingKeeper:    vestingKeeper,
+		authzKeeper:      authzKeeper,
+		address:          common.HexToAddress(evmtypes.VestingPrecompileAddress),
+		expiration:       cmn.DefaultExpirationDuration,
+		kvGasConfig:      storetypes.KVGasConfig(),
+		transientGasConf: storetypes.TransientGasConfig(),
+	}
+}
+
+// RequiredGas returns the required gas for contract execution
+func (e *VestingExecutor) RequiredGas(input []byte, method *abi.Method) uint64 {
+	return cmn.DefaultGasCost(input, e.IsTransaction(method.Name))
+}
+
+// Execute implements the Executor interface
+func (e *VestingExecutor) Execute(
+	ctx sdk.Context,
+	method *abi.Method,
+	caller common.Address,
+	callingContract common.Address,
+	args []interface{},
+	value *big.Int,
+	readOnly bool,
+	evm *vm.EVM,
+) ([]byte, error) {
 	stateDB, ok := evm.StateDB.(*statedb.StateDB)
 	if !ok {
-		return nil, vm.ErrOutOfGas
+		return nil, fmt.Errorf("invalid StateDB type")
 	}
 
-	initialGas := ctx.GasMeter().GasConsumed()
-
-	// This handles any out of gas errors that may occur during the execution of a precompile tx or query.
-	// It avoids panics and returns the out of gas error so the EVM can continue gracefully.
-	defer cmn.HandleGasError(ctx, p.RequiredGas(input), initialGas, &err)()
+	if readOnly && e.IsTransaction(method.Name) {
+		return nil, fmt.Errorf("cannot call non-view method in read-only mode")
+	}
 
 	switch method.Name {
 	// Approval transaction
 	case authorization.ApproveMethod:
-		bz, err = p.Approve(ctx, evm.Origin, stateDB, method, args)
-	// Vesting transactions
+		return e.Approve(ctx, evm.Origin, stateDB, method, args)
+		// Vesting transactions
 	case CreateClawbackVestingAccountMethod:
-		bz, err = p.CreateClawbackVestingAccount(ctx, evm.Origin, stateDB, method, args)
+		return e.CreateClawbackVestingAccount(ctx, evm.Origin, stateDB, method, args)
 	case FundVestingAccountMethod:
-		bz, err = p.FundVestingAccount(ctx, caller, evm.Origin, stateDB, method, args)
+		return e.FundVestingAccount(ctx, caller, evm.Origin, stateDB, method, args)
 	case ClawbackMethod:
-		bz, err = p.Clawback(ctx, caller, evm.Origin, stateDB, method, args)
+		return e.Clawback(ctx, caller, evm.Origin, stateDB, method, args)
 	case UpdateVestingFunderMethod:
-		bz, err = p.UpdateVestingFunder(ctx, caller, evm.Origin, stateDB, method, args)
+		return e.UpdateVestingFunder(ctx, caller, evm.Origin, stateDB, method, args)
 	case ConvertVestingAccountMethod:
-		bz, err = p.ConvertVestingAccount(ctx, stateDB, method, args)
-	// Vesting queries
+		return e.ConvertVestingAccount(ctx, stateDB, method, args)
+		// Vesting queries--
 	case BalancesMethod:
-		bz, err = p.Balances(ctx, method, args)
+		return e.Balances(ctx, method, args)
+	default:
+		return nil, fmt.Errorf(cmn.ErrUnknownMethod, method.Name)
 	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	if err := p.AddJournalEntries(stateDB, ctx); err != nil {
-		return nil, err
-	}
-
-	return bz, nil
 }
 
-// IsTransaction checks if the given method name corresponds to a transaction or query.
-//
-// Available vesting transactions are:
-//   - CreateClawbackVestingAccount
-//   - FundVestingAccount
-//   - Clawback
-//   - UpdateVestingFunder
-//   - ConvertVestingAccount
-//   - Approve
-func (Precompile) IsTransaction(method string) bool {
-	switch method {
+// IsTransaction checks if the method is a transaction or not, depending on its name
+func (e *VestingExecutor) IsTransaction(methodName string) bool {
+	switch methodName {
 	case CreateClawbackVestingAccountMethod,
 		FundVestingAccountMethod,
 		ClawbackMethod,
 		UpdateVestingFunderMethod,
 		ConvertVestingAccountMethod,
-		authorization.ApproveMethod:
+		authorization.ApproveMethod,
+		authorization.RevokeMethod:
 		return true
 	default:
 		return false
 	}
 }
 
+func (e *VestingExecutor) Address() common.Address {
+	return e.address
+}
+
+func (e *VestingExecutor) GetABI() abi.ABI {
+	// All methods are queries for this precompile
+	abi, err := GetABI()
+	if err != nil {
+		panic(err)
+	}
+	return abi
+}
+
 // Logger returns a precompile-specific logger.
-func (p Precompile) Logger(ctx sdk.Context) log.Logger {
+func (p VestingExecutor) Logger(ctx sdk.Context) log.Logger {
 	return ctx.Logger().With("evm extension", "vesting")
 }

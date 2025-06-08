@@ -12,7 +12,7 @@ import (
 )
 
 // Approve implements the ICS20 approve transactions.
-func (p Precompile) Approve(
+func (e *ICS20Executor) Approve(
 	ctx sdk.Context,
 	origin common.Address,
 	stateDB vm.StateDB,
@@ -27,14 +27,14 @@ func (p Precompile) Approve(
 	// Approve from ICS20 common module
 	if err := Approve(
 		ctx,
-		p.AuthzKeeper,
-		p.channelKeeper,
-		p.Address(),
+		e.authzKeeper,
+		e.channelKeeper,
+		e.address,
 		grantee,
 		origin,
-		p.ApprovalExpiration,
+		e.expiration,
 		transferAuthz,
-		p.ABI.Events[authorization.EventTypeIBCTransferAuthorization],
+		e.GetABI().Events[authorization.EventTypeIBCTransferAuthorization],
 		stateDB,
 	); err != nil {
 		return nil, err
@@ -44,7 +44,7 @@ func (p Precompile) Approve(
 }
 
 // Revoke implements the ICS20 authorization revoke transactions.
-func (p Precompile) Revoke(
+func (e *ICS20Executor) Revoke(
 	ctx sdk.Context,
 	origin common.Address,
 	stateDB vm.StateDB,
@@ -59,11 +59,11 @@ func (p Precompile) Revoke(
 	// Revoke from ICS20 common module
 	if err := Revoke(
 		ctx,
-		p.AuthzKeeper,
-		p.Address(),
+		e.authzKeeper,
+		e.address,
 		grantee,
 		origin,
-		p.ABI.Events[authorization.EventTypeIBCTransferAuthorization],
+		e.GetABI().Events[authorization.EventTypeIBCTransferAuthorization],
 		stateDB,
 	); err != nil {
 		return nil, err
@@ -72,8 +72,8 @@ func (p Precompile) Revoke(
 	return method.Outputs.Pack(true)
 }
 
-// IncreaseAllowance implements the ICS20 increase allowance transactions.
-func (p Precompile) IncreaseAllowance(
+// IncreaseAllowance implementation of the ICS20 authorization IncreaseAllowance transactions.
+func (e *ICS20Executor) IncreaseAllowance(
 	ctx sdk.Context,
 	origin common.Address,
 	stateDB vm.StateDB,
@@ -85,18 +85,18 @@ func (p Precompile) IncreaseAllowance(
 		return nil, err
 	}
 
-	// IncreaseAllowance from ICS20 common module
+	// Increase allowance
 	if err := IncreaseAllowance(
 		ctx,
-		p.AuthzKeeper,
-		p.Address(),
+		e.authzKeeper,
+		e.Address(),
 		grantee,
 		origin,
 		sourcePort,
 		sourceChannel,
 		denom,
 		amount,
-		p.ABI.Events[authorization.EventTypeIBCTransferAuthorization],
+		e.GetABI().Events[authorization.EventTypeIBCTransferAuthorization],
 		stateDB,
 	); err != nil {
 		return nil, err
@@ -105,8 +105,8 @@ func (p Precompile) IncreaseAllowance(
 	return method.Outputs.Pack(true)
 }
 
-// DecreaseAllowance implements the ICS20 decrease allowance transactions.
-func (p Precompile) DecreaseAllowance(
+// DecreaseAllowance implementation of the ICS20 authorization DecreaseAllowance transactions.
+func (e *ICS20Executor) DecreaseAllowance(
 	ctx sdk.Context,
 	origin common.Address,
 	stateDB vm.StateDB,
@@ -121,15 +121,15 @@ func (p Precompile) DecreaseAllowance(
 	// DecreaseAllowance from ICS20 common module
 	if err := DecreaseAllowance(
 		ctx,
-		p.AuthzKeeper,
-		p.Address(),
+		e.authzKeeper,
+		e.Address(),
 		grantee,
 		origin,
 		sourcePort,
 		sourceChannel,
 		denom,
 		amount,
-		p.ABI.Events[authorization.EventTypeIBCTransferAuthorization],
+		e.GetABI().Events[authorization.EventTypeIBCTransferAuthorization],
 		stateDB,
 	); err != nil {
 		return nil, err

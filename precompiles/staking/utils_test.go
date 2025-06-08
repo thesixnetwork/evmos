@@ -53,7 +53,7 @@ func (s *PrecompileTestSuite) ApproveAndCheckAuthz(method abi.Method, granter, g
 		amount,
 		[]string{msgType},
 	}
-	resp, err := s.precompile.Approve(s.network.GetContext(), granter.Addr, s.network.GetStateDB(), &method, approveArgs)
+	resp, err := s.executor.Approve(s.network.GetContext(), granter.Addr, s.network.GetStateDB(), &method, approveArgs)
 	s.Require().NoError(err)
 	s.Require().Equal(resp, cmn.TrueValue)
 

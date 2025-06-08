@@ -328,7 +328,7 @@ var _ = Describe("Handling a MsgEthereumTx message", Label("EVM"), Ordered, func
 		senderKey := s.keyring.GetKey(contractCallParams.SignerIndex)
 		contractAddress := common.HexToAddress(evmtypes.StakingPrecompileAddress)
 		validatorAddress := s.network.GetValidators()[1].OperatorAddress
-		contractABI, err := staking.LoadABI()
+		contractABI, err := staking.GetABI()
 		Expect(err).To(BeNil())
 
 		// If grpc query fails, that means there were no previous delegations

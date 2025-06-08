@@ -32,7 +32,7 @@ var (
 
 // Approve sets amount as the allowance of a grantee over the caller’s tokens.
 // Returns a boolean value indicating whether the operation succeeded.
-func (p Precompile) Approve(
+func (p StakingExecutor) Approve(
 	ctx sdk.Context,
 	origin common.Address,
 	stateDB vm.StateDB,
@@ -76,7 +76,7 @@ func (p Precompile) Approve(
 // Revoke removes the authorization grants given in the typeUrls for a given granter to a given grantee.
 // It only works if the origin matches the spender to avoid unauthorized revocations.
 // Works only for staking messages.
-func (p Precompile) Revoke(
+func (p StakingExecutor) Revoke(
 	ctx sdk.Context,
 	origin common.Address,
 	stateDB vm.StateDB,
@@ -91,7 +91,7 @@ func (p Precompile) Revoke(
 	for _, typeURL := range typeURLs {
 		switch typeURL {
 		case DelegateMsg, UndelegateMsg, RedelegateMsg, CancelUnbondingDelegationMsg:
-			if err = p.AuthzKeeper.DeleteGrant(ctx, grantee.Bytes(), origin.Bytes(), typeURL); err != nil {
+			if err = p.authzKeeper.DeleteGrant(ctx, grantee.Bytes(), origin.Bytes(), typeURL); err != nil {
 				return nil, err
 			}
 		default:
@@ -106,7 +106,7 @@ func (p Precompile) Revoke(
 		Ctx:            ctx,
 		StateDB:        stateDB,
 		ContractAddr:   p.Address(),
-		ContractEvents: p.ABI.Events,
+		ContractEvents: p.GetABI().Events,
 		EventData: authorization.EventRevocation{
 			Granter:  origin,
 			Grantee:  grantee,
@@ -120,7 +120,7 @@ func (p Precompile) Revoke(
 }
 
 // DecreaseAllowance decreases the allowance of grantee over the caller’s tokens by the amount.
-func (p Precompile) DecreaseAllowance(
+func (p StakingExecutor) DecreaseAllowance(
 	ctx sdk.Context,
 	origin common.Address,
 	stateDB vm.StateDB,
@@ -139,7 +139,7 @@ func (p Precompile) DecreaseAllowance(
 	for _, typeURL := range typeUrls {
 		switch typeURL {
 		case DelegateMsg, UndelegateMsg, RedelegateMsg, CancelUnbondingDelegationMsg:
-			authzGrant, expiration, err := authorization.CheckAuthzExists(ctx, p.AuthzKeeper, grantee, origin, typeURL)
+			authzGrant, expiration, err := authorization.CheckAuthzExists(ctx, p.authzKeeper, grantee, origin, typeURL)
 			if err != nil {
 				return nil, err
 			}
@@ -167,7 +167,7 @@ func (p Precompile) DecreaseAllowance(
 }
 
 // IncreaseAllowance increases the allowance of grantee over the caller’s tokens by the amount.
-func (p Precompile) IncreaseAllowance(
+func (p StakingExecutor) IncreaseAllowance(
 	ctx sdk.Context,
 	origin common.Address,
 	stateDB vm.StateDB,
@@ -202,9 +202,9 @@ func (p Precompile) IncreaseAllowance(
 	return method.Outputs.Pack(true)
 }
 
-// grantOrDeleteStakingAuthz grants staking method authorization to the precompiled contract for a spender.
+// grantOrDeleteStakingAuthz grants staking method authorization to the StakingExecutord contract for a spender.
 // If the amount is zero, it deletes the authorization if it exists.
-func (p Precompile) grantOrDeleteStakingAuthz(
+func (p StakingExecutor) grantOrDeleteStakingAuthz(
 	ctx sdk.Context,
 	grantee, granter common.Address,
 	coin *sdk.Coin,
@@ -228,7 +228,7 @@ func (p Precompile) grantOrDeleteStakingAuthz(
 			"granter", granter.String(),
 		)
 		stakingAuthz := stakingtypes.StakeAuthorization{AuthorizationType: authzType}
-		return p.AuthzKeeper.DeleteGrant(ctx, grantee.Bytes(), granter.Bytes(), stakingAuthz.MsgTypeURL())
+		return p.authzKeeper.DeleteGrant(ctx, grantee.Bytes(), granter.Bytes(), stakingAuthz.MsgTypeURL())
 	}
 
 	// Case 3: coin amount is non zero -> and not coin is not nil set with custom amount
@@ -236,7 +236,7 @@ func (p Precompile) grantOrDeleteStakingAuthz(
 }
 
 // createStakingAuthz creates a staking authorization for a spender.
-func (p Precompile) createStakingAuthz(
+func (p StakingExecutor) createStakingAuthz(
 	ctx sdk.Context,
 	grantee, granter common.Address,
 	coin *sdk.Coin,
@@ -275,12 +275,12 @@ func (p Precompile) createStakingAuthz(
 		return err
 	}
 
-	expiration := ctx.BlockTime().Add(p.ApprovalExpiration).UTC()
-	return p.AuthzKeeper.SaveGrant(ctx, grantee.Bytes(), granter.Bytes(), stakingAuthz, &expiration)
+	expiration := ctx.BlockTime().Add(p.expiration).UTC()
+	return p.authzKeeper.SaveGrant(ctx, grantee.Bytes(), granter.Bytes(), stakingAuthz, &expiration)
 }
 
 // decreaseAllowance decreases the allowance of spender over the caller’s tokens by the amount.
-func (p Precompile) decreaseAllowance(
+func (p StakingExecutor) decreaseAllowance(
 	ctx sdk.Context,
 	grantee, granter common.Address,
 	coin *sdk.Coin,
@@ -303,18 +303,18 @@ func (p Precompile) decreaseAllowance(
 		stakeAuthz.MaxTokens.Amount = stakeAuthz.MaxTokens.Amount.Sub(coin.Amount)
 	}
 
-	return p.AuthzKeeper.SaveGrant(ctx, grantee.Bytes(), granter.Bytes(), stakeAuthz, expiration)
+	return p.authzKeeper.SaveGrant(ctx, grantee.Bytes(), granter.Bytes(), stakeAuthz, expiration)
 }
 
 // increaseAllowance increases the allowance of spender over the caller’s tokens by the amount.
-func (p Precompile) increaseAllowance(
+func (p StakingExecutor) increaseAllowance(
 	ctx sdk.Context,
 	grantee, granter common.Address,
 	coin *sdk.Coin,
 	msgURL string,
 ) error {
 	// Check if the authorization exists for the given spender
-	existingAuthz, expiration, err := authorization.CheckAuthzExists(ctx, p.AuthzKeeper, grantee, granter, msgURL)
+	existingAuthz, expiration, err := authorization.CheckAuthzExists(ctx, p.authzKeeper, grantee, granter, msgURL)
 	if err != nil {
 		return err
 	}
@@ -334,11 +334,11 @@ func (p Precompile) increaseAllowance(
 	// Add the amount to the limit
 	stakeAuthz.MaxTokens.Amount = stakeAuthz.MaxTokens.Amount.Add(coin.Amount)
 
-	return p.AuthzKeeper.SaveGrant(ctx, grantee.Bytes(), granter.Bytes(), stakeAuthz, expiration)
+	return p.authzKeeper.SaveGrant(ctx, grantee.Bytes(), granter.Bytes(), stakeAuthz, expiration)
 }
 
 // UpdateStakingAuthorization updates the staking grant based on the authz AcceptResponse for the given granter and grantee.
-func (p Precompile) UpdateStakingAuthorization(
+func (p StakingExecutor) UpdateStakingAuthorization(
 	ctx sdk.Context,
 	grantee, granter common.Address,
 	stakeAuthz *stakingtypes.StakeAuthorization,
@@ -352,9 +352,9 @@ func (p Precompile) UpdateStakingAuthorization(
 	}
 
 	if updatedResponse.Delete {
-		err = p.AuthzKeeper.DeleteGrant(ctx, grantee.Bytes(), granter.Bytes(), messageType)
+		err = p.authzKeeper.DeleteGrant(ctx, grantee.Bytes(), granter.Bytes(), messageType)
 	} else {
-		err = p.AuthzKeeper.SaveGrant(ctx, grantee.Bytes(), granter.Bytes(), updatedResponse.Updated, expiration)
+		err = p.authzKeeper.SaveGrant(ctx, grantee.Bytes(), granter.Bytes(), updatedResponse.Updated, expiration)
 	}
 
 	if err != nil {

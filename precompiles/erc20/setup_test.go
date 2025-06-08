@@ -3,6 +3,7 @@ package erc20_test
 import (
 	"testing"
 
+	cmn "github.com/evmos/evmos/v20/precompiles/common"
 	erc20precompile "github.com/evmos/evmos/v20/precompiles/erc20"
 	"github.com/evmos/evmos/v20/testutil/integration/evmos/factory"
 	"github.com/evmos/evmos/v20/testutil/integration/evmos/grpc"
@@ -27,7 +28,8 @@ type PrecompileTestSuite struct {
 	grpcHandler grpc.Handler
 	keyring     testkeyring.Keyring
 
-	precompile *erc20precompile.Precompile
+	precompile *cmn.Precompile
+	executor   *erc20precompile.ERC20Executor
 }
 
 func TestPrecompileTestSuite(t *testing.T) {

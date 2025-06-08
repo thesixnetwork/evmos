@@ -16,6 +16,22 @@ import (
 	stakingkeeper "github.com/evmos/evmos/v20/x/staking/keeper"
 )
 
+var _ vm.PrecompiledContract = &Precompile{}
+var _ cmn.Executor = &DistributionExecutor{}
+
+type Precompile struct {
+	*cmn.Precompile
+}
+
+type DistributionExecutor struct {
+	distributionKeeper distributionkeeper.Keeper
+	stakingKeeper      stakingkeeper.Keeper
+	authzKeeper        authzkeeper.Keeper
+
+	precompile *Precompile
+	address    common.Address
+}
+
 //go:embed abi.json
 var f embed.FS
 
@@ -23,11 +39,25 @@ func GetABI() (abi.ABI, error) {
 	return cmn.LoadABI(f, "abi.json")
 }
 
-type DistributionExecutor struct {
-	distributionKeeper distributionkeeper.Keeper
-	stakingKeeper      stakingkeeper.Keeper
-	authzKeeper        authzkeeper.Keeper
-	address            common.Address
+func NewPrecompile(
+	dk distributionkeeper.Keeper,
+	sk stakingkeeper.Keeper,
+	ak authzkeeper.Keeper,
+) (*Precompile, error) {
+	abi, err := GetABI()
+	if err != nil {
+		return nil, fmt.Errorf("error loading distribution ABI: %w", err)
+	}
+	precompile := &Precompile{}
+	executor := &DistributionExecutor{
+		distributionKeeper: dk,
+		stakingKeeper:      sk,
+		authzKeeper:        ak,
+		address:            common.HexToAddress(evmtypes.DistributionPrecompileAddress),
+		precompile:         precompile,
+	}
+	precompile.Precompile = cmn.NewPrecompile(abi, executor, executor.address, "dist")
+	return precompile, nil
 }
 
 func NewDistributionExecutor(
@@ -41,19 +71,6 @@ func NewDistributionExecutor(
 		authzKeeper:        ak,
 		address:            common.HexToAddress(evmtypes.DistributionPrecompileAddress),
 	}
-}
-
-func NewPrecompile(
-	dk distributionkeeper.Keeper,
-	sk stakingkeeper.Keeper,
-	ak authzkeeper.Keeper,
-) (*cmn.Precompile, error) {
-	abiDef, err := GetABI()
-	if err != nil {
-		return nil, fmt.Errorf("error loading distribution ABI: %w", err)
-	}
-	exec := NewDistributionExecutor(dk, sk, ak)
-	return cmn.NewPrecompile(abiDef, exec, exec.address, "distribution"), nil
 }
 
 func (e *DistributionExecutor) RequiredGas(input []byte, method *abi.Method) uint64 {

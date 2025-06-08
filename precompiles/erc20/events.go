@@ -23,9 +23,9 @@ const (
 )
 
 // EmitTransferEvent creates a new Transfer event emitted on transfer and transferFrom transactions.
-func (p Precompile) EmitTransferEvent(ctx sdk.Context, stateDB vm.StateDB, from, to common.Address, value *big.Int) error {
+func (p ERC20Executor) EmitTransferEvent(ctx sdk.Context, stateDB vm.StateDB, from, to common.Address, value *big.Int) error {
 	// Prepare the event topics
-	event := p.ABI.Events[EventTypeTransfer]
+	event := p.GetABI().Events[EventTypeTransfer]
 	topics := make([]common.Hash, 3)
 
 	// The first topic is always the signature of the event.
@@ -60,9 +60,9 @@ func (p Precompile) EmitTransferEvent(ctx sdk.Context, stateDB vm.StateDB, from,
 
 // EmitApprovalEvent creates a new approval event emitted on Approve, IncreaseAllowance
 // and DecreaseAllowance transactions.
-func (p Precompile) EmitApprovalEvent(ctx sdk.Context, stateDB vm.StateDB, owner, spender common.Address, value *big.Int) error {
+func (p ERC20Executor) EmitApprovalEvent(ctx sdk.Context, stateDB vm.StateDB, owner, spender common.Address, value *big.Int) error {
 	// Prepare the event topics
-	event := p.ABI.Events[auth.EventTypeApproval]
+	event := p.GetABI().Events[auth.EventTypeApproval]
 	topics := make([]common.Hash, 3)
 
 	// The first topic is always the signature of the event.

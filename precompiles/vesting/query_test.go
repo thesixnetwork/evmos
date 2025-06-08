@@ -83,7 +83,7 @@ func (s *PrecompileTestSuite) TestBalances() {
 			ctx = s.network.GetContext()
 			method := s.precompile.Methods[vesting.BalancesMethod]
 
-			bz, err := s.precompile.Balances(ctx, &method, tc.malleate())
+			bz, err := s.executor.Balances(ctx, &method, tc.malleate())
 
 			if tc.expError {
 				s.Require().Error(err)

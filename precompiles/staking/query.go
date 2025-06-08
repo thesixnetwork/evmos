@@ -39,7 +39,7 @@ const (
 )
 
 // Delegation returns the delegation that a delegator has with a specific validator.
-func (p Precompile) Delegation(
+func (p StakingExecutor) Delegation(
 	ctx sdk.Context,
 	_ common.Address,
 	method *abi.Method,
@@ -73,7 +73,7 @@ func (p Precompile) Delegation(
 
 // UnbondingDelegation returns the delegation currently being unbonded for a delegator from
 // a specific validator.
-func (p Precompile) UnbondingDelegation(
+func (p StakingExecutor) UnbondingDelegation(
 	ctx sdk.Context,
 	_ common.Address,
 	method *abi.Method,
@@ -102,7 +102,7 @@ func (p Precompile) UnbondingDelegation(
 }
 
 // Validator returns the validator information for a given validator address.
-func (p Precompile) Validator(
+func (p StakingExecutor) Validator(
 	ctx sdk.Context,
 	method *abi.Method,
 	_ common.Address,
@@ -131,7 +131,7 @@ func (p Precompile) Validator(
 }
 
 // Validators returns the validators information with a provided status & pagination (optional).
-func (p Precompile) Validators(
+func (p StakingExecutor) Validators(
 	ctx sdk.Context,
 	method *abi.Method,
 	_ common.Address,
@@ -155,7 +155,7 @@ func (p Precompile) Validators(
 }
 
 // Redelegation returns the redelegation between two validators for a delegator.
-func (p Precompile) Redelegation(
+func (p StakingExecutor) Redelegation(
 	ctx sdk.Context,
 	method *abi.Method,
 	_ common.Address,
@@ -177,7 +177,7 @@ func (p Precompile) Redelegation(
 // the specified criteria (delegator address and/or validator source address
 // and/or validator destination address or all existing redelegations) with pagination.
 // Pagination is only supported for querying redelegations from a source validator or to query all redelegations.
-func (p Precompile) Redelegations(
+func (p StakingExecutor) Redelegations(
 	ctx sdk.Context,
 	method *abi.Method,
 	_ common.Address,
@@ -201,7 +201,7 @@ func (p Precompile) Redelegations(
 }
 
 // Allowance returns the remaining allowance of a grantee to the contract.
-func (p Precompile) Allowance(
+func (p StakingExecutor) Allowance(
 	ctx sdk.Context,
 	method *abi.Method,
 	_ common.Address,
@@ -212,7 +212,7 @@ func (p Precompile) Allowance(
 		return nil, err
 	}
 
-	msgAuthz, _ := p.AuthzKeeper.GetAuthorization(ctx, grantee.Bytes(), granter.Bytes(), msg)
+	msgAuthz, _ := p.authzKeeper.GetAuthorization(ctx, grantee.Bytes(), granter.Bytes(), msg)
 
 	if msgAuthz == nil {
 		return method.Outputs.Pack(big.NewInt(0))

@@ -13,7 +13,7 @@ const (
 )
 
 // Balances queries the balances of a clawback vesting account.
-func (p Precompile) Balances(
+func (p VestingExecutor) Balances(
 	ctx sdk.Context,
 	method *abi.Method,
 	args []interface{},

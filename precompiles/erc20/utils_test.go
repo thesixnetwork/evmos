@@ -15,6 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	auth "github.com/evmos/evmos/v20/precompiles/authorization"
+	cmn "github.com/evmos/evmos/v20/precompiles/common"
 	"github.com/evmos/evmos/v20/precompiles/erc20"
 	"github.com/evmos/evmos/v20/precompiles/testutil"
 	commonfactory "github.com/evmos/evmos/v20/testutil/integration/common/factory"
@@ -218,7 +219,7 @@ func (s *PrecompileTestSuite) requireSendAuthz(grantee, granter sdk.AccAddress, 
 // setupERC20Precompile is a helper function to set up an instance of the ERC20 precompile for
 // a given token denomination, set the token pair in the ERC20 keeper and adds the precompile
 // to the available and active precompiles.
-func (s *PrecompileTestSuite) setupERC20Precompile(denom string) *erc20.Precompile {
+func (s *PrecompileTestSuite) setupERC20Precompile(denom string) *cmn.Precompile {
 	tokenPair := erc20types.NewTokenPair(utiltx.GenerateAddress(), denom, erc20types.OWNER_MODULE)
 	s.network.App.Erc20Keeper.SetTokenPair(s.network.GetContext(), tokenPair)
 
@@ -228,10 +229,20 @@ func (s *PrecompileTestSuite) setupERC20Precompile(denom string) *erc20.Precompi
 	return precompile
 }
 
+func (s *PrecompileTestSuite) setupERC20Executor(denom string) *erc20.ERC20Executor {
+	tokenPair := erc20types.NewTokenPair(utiltx.GenerateAddress(), denom, erc20types.OWNER_MODULE)
+	s.network.App.Erc20Keeper.SetTokenPair(s.network.GetContext(), tokenPair)
+
+	precompile, err := setupERC20ExecutorForTokenPair(*s.network, tokenPair)
+	s.Require().NoError(err, "failed to set up %q erc20 precompile", tokenPair.Denom)
+
+	return precompile
+}
+
 // setupERC20Precompile is a helper function to set up an instance of the ERC20 precompile for
 // a given token denomination, set the token pair in the ERC20 keeper and adds the precompile
 // to the available and active precompiles.
-func (is *IntegrationTestSuite) setupERC20Precompile(denom string, tokenPairs []erc20types.TokenPair) *erc20.Precompile {
+func (is *IntegrationTestSuite) setupERC20Precompile(denom string, tokenPairs []erc20types.TokenPair) *cmn.Precompile {
 	var tokenPair erc20types.TokenPair
 	for _, tp := range tokenPairs {
 		if tp.Denom != denom {
@@ -240,15 +251,75 @@ func (is *IntegrationTestSuite) setupERC20Precompile(denom string, tokenPairs []
 		tokenPair = tp
 	}
 
-	precompile, err := erc20.NewPrecompile(
+	executor := erc20.NewERC20Executor(
 		tokenPair,
 		is.network.App.BankKeeper,
 		is.network.App.AuthzKeeper,
 		is.network.App.TransferKeeper,
+		time.Hour, // Default approval expiration
 	)
+
+	abi, err := erc20.GetABI()
+	if err != nil {
+		Expect(err).ToNot(HaveOccurred(), "failed to get ABI for %q erc20 precompile", tokenPair.Denom)
+	}
+
+	precompile := cmn.NewPrecompile(abi, executor, executor.Address(), "erc20")
 	Expect(err).ToNot(HaveOccurred(), "failed to set up %q erc20 precompile", tokenPair.Denom)
 
 	return precompile
+}
+
+func (is *IntegrationTestSuite) setupERC20Executor(denom string, tokenPairs []erc20types.TokenPair) *erc20.ERC20Executor {
+	var tokenPair erc20types.TokenPair
+	for _, tp := range tokenPairs {
+		if tp.Denom != denom {
+			continue
+		}
+		tokenPair = tp
+	}
+
+	executor := erc20.NewERC20Executor(
+		tokenPair,
+		is.network.App.BankKeeper,
+		is.network.App.AuthzKeeper,
+		is.network.App.TransferKeeper,
+		time.Hour, // Default approval expiration
+	)
+
+	return executor
+}
+
+// setupERC20PrecompileForTokenPair is a helper function to set up an instance of the ERC20 precompile for
+// a given token pair and adds the precompile to the available and active precompiles.
+// Do not use this function for integration tests.
+func setupERC20ExecutorForTokenPair(
+	unitNetwork network.UnitTestNetwork, tokenPair erc20types.TokenPair,
+) (*erc20.ERC20Executor, error) {
+	executor := erc20.NewERC20Executor(
+		tokenPair,
+		unitNetwork.App.BankKeeper,
+		unitNetwork.App.AuthzKeeper,
+		unitNetwork.App.TransferKeeper,
+		time.Hour, // Default approval expiration
+	)
+
+	abi, err := erc20.GetABI()
+	if err != nil {
+		return nil, errorsmod.Wrapf(err, "failed to get ABI for %q erc20 precompile", tokenPair.Denom)
+	}
+
+	precompile := cmn.NewPrecompile(abi, executor, executor.Address(), "erc20")
+
+	err = unitNetwork.App.Erc20Keeper.EnableDynamicPrecompiles(
+		unitNetwork.GetContext(),
+		precompile.Address(),
+	)
+	if err != nil {
+		return nil, errorsmod.Wrapf(err, "failed to add %q erc20 precompile to EVM extensions", tokenPair.Denom)
+	}
+
+	return executor, nil
 }
 
 // setupERC20PrecompileForTokenPair is a helper function to set up an instance of the ERC20 precompile for
@@ -256,16 +327,21 @@ func (is *IntegrationTestSuite) setupERC20Precompile(denom string, tokenPairs []
 // Do not use this function for integration tests.
 func setupERC20PrecompileForTokenPair(
 	unitNetwork network.UnitTestNetwork, tokenPair erc20types.TokenPair,
-) (*erc20.Precompile, error) {
-	precompile, err := erc20.NewPrecompile(
+) (*cmn.Precompile, error) {
+	executor := erc20.NewERC20Executor(
 		tokenPair,
 		unitNetwork.App.BankKeeper,
 		unitNetwork.App.AuthzKeeper,
 		unitNetwork.App.TransferKeeper,
+		time.Hour, // Default approval expiration
 	)
+
+	abi, err := erc20.GetABI()
 	if err != nil {
-		return nil, errorsmod.Wrapf(err, "failed to create %q erc20 precompile", tokenPair.Denom)
+		return nil, errorsmod.Wrapf(err, "failed to get ABI for %q erc20 precompile", tokenPair.Denom)
 	}
+
+	precompile := cmn.NewPrecompile(abi, executor, executor.Address(), "erc20")
 
 	err = unitNetwork.App.Erc20Keeper.EnableDynamicPrecompiles(
 		unitNetwork.GetContext(),
@@ -285,16 +361,21 @@ func setupNewERC20PrecompileForTokenPair(
 	privKey cryptotypes.PrivKey,
 	unitNetwork *network.UnitTestNetwork,
 	tf factory.TxFactory, tokenPair erc20types.TokenPair,
-) (*erc20.Precompile, error) {
-	precompile, err := erc20.NewPrecompile(
+) (*cmn.Precompile, error) {
+	executor := erc20.NewERC20Executor(
 		tokenPair,
 		unitNetwork.App.BankKeeper,
 		unitNetwork.App.AuthzKeeper,
 		unitNetwork.App.TransferKeeper,
+		time.Hour, // Default approval expiration
 	)
+
+	abi, err := erc20.GetABI()
 	if err != nil {
-		return nil, errorsmod.Wrapf(err, "failed to create %q erc20 precompile", tokenPair.Denom)
+		return nil, errorsmod.Wrapf(err, "failed to get ABI for %q erc20 precompile", tokenPair.Denom)
 	}
+
+	precompile := cmn.NewPrecompile(abi, executor, executor.Address(), "erc20")
 
 	// Update the params via gov proposal
 	params := unitNetwork.App.Erc20Keeper.GetParams(unitNetwork.GetContext())
@@ -504,7 +585,7 @@ func (is *IntegrationTestSuite) ExpectNoSendAuthzForContract(
 // in the ethereum transaction response.
 func (is *IntegrationTestSuite) ExpectTrueToBeReturned(res *evmtypes.MsgEthereumTxResponse, methodName string) {
 	var ret bool
-	err := is.precompile.UnpackIntoInterface(&ret, methodName, res.Ret)
+	err := is.precompile.ABI.UnpackIntoInterface(&ret, methodName, res.Ret)
 	Expect(err).ToNot(HaveOccurred(), "expected no error unpacking")
 	Expect(ret).To(BeTrue(), "expected true to be returned")
 }

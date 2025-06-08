@@ -29,9 +29,9 @@ const (
 )
 
 // EmitApprovalEvent creates a new approval event emitted on an Approve, IncreaseAllowance and DecreaseAllowance transactions.
-func (p Precompile) EmitApprovalEvent(ctx sdk.Context, stateDB vm.StateDB, grantee, granter common.Address, typeURL string) error {
+func (p VestingExecutor) EmitApprovalEvent(ctx sdk.Context, stateDB vm.StateDB, grantee, granter common.Address, typeURL string) error {
 	// Prepare the event topics
-	event := p.Events[authorization.EventTypeApproval]
+	event := p.precompile.Events[authorization.EventTypeApproval]
 	topics := make([]common.Hash, 3)
 
 	// The first topic is always the signature of the event.
@@ -67,13 +67,13 @@ func (p Precompile) EmitApprovalEvent(ctx sdk.Context, stateDB vm.StateDB, grant
 
 // EmitCreateClawbackVestingAccountEvent creates a new create clawback vesting account event emitted
 // on a CreateClawbackVestingAccount transaction.
-func (p Precompile) EmitCreateClawbackVestingAccountEvent(
+func (p VestingExecutor) EmitCreateClawbackVestingAccountEvent(
 	ctx sdk.Context,
 	stateDB vm.StateDB,
 	funderAddr, vestingAddr common.Address,
 ) error {
 	// Prepare the event topics
-	event := p.Events[EventTypeCreateClawbackVestingAccount]
+	event := p.precompile.Events[EventTypeCreateClawbackVestingAccount]
 	topics := make([]common.Hash, 3)
 
 	// The first topic is always the signature of the event.
@@ -103,7 +103,7 @@ func (p Precompile) EmitCreateClawbackVestingAccountEvent(
 
 // EmitFundVestingAccountEvent creates a new fund vesting account event emitted
 // on a FundVestingAccount transaction.
-func (p Precompile) EmitFundVestingAccountEvent(
+func (p VestingExecutor) EmitFundVestingAccountEvent(
 	ctx sdk.Context,
 	stateDB vm.StateDB,
 	msg *vestingtypes.MsgFundVestingAccount,
@@ -112,7 +112,7 @@ func (p Precompile) EmitFundVestingAccountEvent(
 	vestingPeriods *VestingPeriods,
 ) error {
 	// Prepare the event topics
-	event := p.Events[EventTypeFundVestingAccount]
+	event := p.precompile.Events[EventTypeFundVestingAccount]
 	topics := make([]common.Hash, 3)
 
 	// The first topic is always the signature of the event.
@@ -150,13 +150,13 @@ func (p Precompile) EmitFundVestingAccountEvent(
 // EmitClawbackEvent creates a new clawback event emitted on a Clawback transaction.
 //
 
-func (p Precompile) EmitClawbackEvent(
+func (p VestingExecutor) EmitClawbackEvent(
 	ctx sdk.Context,
 	stateDB vm.StateDB,
 	funderAddr, accountAddr, destAddr common.Address,
 ) error {
 	// Prepare the event topics
-	event := p.Events[EventTypeClawback]
+	event := p.precompile.Events[EventTypeClawback]
 	topics := make([]common.Hash, 3)
 
 	// The first topic is always the signature of the event.
@@ -194,13 +194,13 @@ func (p Precompile) EmitClawbackEvent(
 // EmitUpdateVestingFunderEvent creates a new update vesting funder event emitted on a UpdateVestingFunder transaction.
 //
 
-func (p Precompile) EmitUpdateVestingFunderEvent(
+func (p VestingExecutor) EmitUpdateVestingFunderEvent(
 	ctx sdk.Context,
 	stateDB vm.StateDB,
 	funderAddr, newFunderAddr, vestingAddr common.Address,
 ) error {
 	// Prepare the event topics
-	event := p.Events[EventTypeUpdateVestingFunder]
+	event := p.precompile.Events[EventTypeUpdateVestingFunder]
 	topics := make([]common.Hash, 3)
 
 	// The first topic is always the signature of the event.
@@ -236,9 +236,9 @@ func (p Precompile) EmitUpdateVestingFunderEvent(
 }
 
 // EmitConvertVestingAccountEvent creates a new convert vesting account event emitted on a ConvertVestingAccount transaction.
-func (p Precompile) EmitConvertVestingAccountEvent(ctx sdk.Context, stateDB vm.StateDB, vestingAddr common.Address) error {
+func (p VestingExecutor) EmitConvertVestingAccountEvent(ctx sdk.Context, stateDB vm.StateDB, vestingAddr common.Address) error {
 	// Prepare the event topics
-	event := p.Events[EventTypeConvertVestingAccount]
+	event := p.precompile.Events[EventTypeConvertVestingAccount]
 	topics := make([]common.Hash, 2)
 
 	// The first topic is always the signature of the event.

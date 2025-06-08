@@ -114,7 +114,7 @@ func (s *PrecompileTestSuite) TestCreateClawbackVestingAccount() {
 
 			createArgs := tc.malleate()
 
-			bz, err := s.precompile.CreateClawbackVestingAccount(
+			bz, err := s.executor.CreateClawbackVestingAccount(
 				ctx,
 				s.keyring.GetAddr(0),
 				s.network.GetStateDB(),
@@ -209,7 +209,7 @@ func (s *PrecompileTestSuite) TestFundVestingAccount() {
 			var contract *vm.Contract
 			contract, ctx = testutil.NewPrecompileContract(s.T(), ctx, s.keyring.GetAddr(0), s.precompile, tc.gas)
 
-			bz, err := s.precompile.FundVestingAccount(ctx, contract.CallerAddress, s.keyring.GetAddr(0), s.network.GetStateDB(), &method, tc.malleate())
+			bz, err := s.executor.FundVestingAccount(ctx, contract.CallerAddress, s.keyring.GetAddr(0), s.network.GetStateDB(), &method, tc.malleate())
 
 			if tc.expError {
 				s.Require().ErrorContains(err, tc.errContains)
@@ -289,7 +289,7 @@ func (s *PrecompileTestSuite) TestClawback() {
 			var contract *vm.Contract
 			contract, ctx = testutil.NewPrecompileContract(s.T(), ctx, s.keyring.GetAddr(0), s.precompile, tc.gas)
 
-			bz, err := s.precompile.Clawback(ctx, contract.CallerAddress, s.keyring.GetAddr(0), s.network.GetStateDB(), &method, tc.malleate())
+			bz, err := s.executor.Clawback(ctx, contract.CallerAddress, s.keyring.GetAddr(0), s.network.GetStateDB(), &method, tc.malleate())
 
 			if tc.expError {
 				s.Require().ErrorContains(err, tc.errContains)
@@ -377,7 +377,7 @@ func (s *PrecompileTestSuite) TestUpdateVestingFunder() {
 			var contract *vm.Contract
 			contract, ctx = testutil.NewPrecompileContract(s.T(), ctx, s.keyring.GetAddr(0), s.precompile, tc.gas)
 
-			bz, err := s.precompile.UpdateVestingFunder(ctx, contract.CallerAddress, s.keyring.GetAddr(0), s.network.GetStateDB(), &method, tc.malleate())
+			bz, err := s.executor.UpdateVestingFunder(ctx, contract.CallerAddress, s.keyring.GetAddr(0), s.network.GetStateDB(), &method, tc.malleate())
 
 			if tc.expError {
 				s.Require().ErrorContains(err, tc.errContains)
@@ -453,7 +453,7 @@ func (s *PrecompileTestSuite) TestConvertVestingAccount() {
 			ctx = s.network.GetContext()
 			method := s.precompile.Methods[vesting.ConvertVestingAccountMethod]
 
-			bz, err := s.precompile.ConvertVestingAccount(ctx, s.network.GetStateDB(), &method, tc.malleate())
+			bz, err := s.executor.ConvertVestingAccount(ctx, s.network.GetStateDB(), &method, tc.malleate())
 
 			if tc.expError {
 				s.Require().ErrorContains(err, tc.errContains)

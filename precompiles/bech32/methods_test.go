@@ -81,7 +81,7 @@ func (s *PrecompileTestSuite) TestHexToBech32() {
 		s.Run(tc.name, func() {
 			s.SetupTest()
 
-			bz, err := s.precompile.HexToBech32(&method, tc.malleate())
+			bz, err := s.executor.HexToBech32(&method, tc.malleate())
 
 			if tc.expError {
 				s.Require().Error(err)
@@ -186,7 +186,7 @@ func (s *PrecompileTestSuite) TestBech32ToHex() {
 		s.Run(tc.name, func() {
 			s.SetupTest()
 
-			bz, err := s.precompile.Bech32ToHex(&method, tc.malleate())
+			bz, err := s.executor.Bech32ToHex(&method, tc.malleate())
 
 			if tc.expError {
 				s.Require().Error(err)

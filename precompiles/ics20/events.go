@@ -17,8 +17,8 @@ const (
 	EventTypeIBCTransfer = "IBCTransfer"
 )
 
-// EmitIBCTransferEvent creates a new IBC transfer event emitted on a Transfer transaction.
-func EmitIBCTransferEvent(
+// EmitIBCTransferEvent emits the Transfer event for the IBC transfer transaction.
+func (e *ICS20Executor) EmitIBCTransferEvent(
 	ctx sdk.Context,
 	stateDB vm.StateDB,
 	event abi.Event,

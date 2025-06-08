@@ -16,6 +16,7 @@ import (
 
 	"github.com/evmos/evmos/v20/contracts"
 	auth "github.com/evmos/evmos/v20/precompiles/authorization"
+	cmn "github.com/evmos/evmos/v20/precompiles/common"
 	"github.com/evmos/evmos/v20/precompiles/erc20"
 	"github.com/evmos/evmos/v20/precompiles/erc20/testdata"
 	"github.com/evmos/evmos/v20/precompiles/testutil"
@@ -49,8 +50,8 @@ type IntegrationTestSuite struct {
 	tokenDenom    string // erc20 precompile denom with supply
 	tokenDenomTwo string // erc20 precompile denom with zero supply
 
-	precompile    *erc20.Precompile // erc20 precompile with supply
-	precompileTwo *erc20.Precompile // erc20 precompile with zero supply
+	precompile    *cmn.Precompile // erc20 precompile with supply
+	precompileTwo *cmn.Precompile // erc20 precompile with zero supply
 }
 
 func (is *IntegrationTestSuite) SetupTest() {
@@ -214,7 +215,7 @@ var _ = Describe("ERC20 Extension -", func() {
 				},
 				directCallToken2: {
 					Address: is.precompileTwo.Address(),
-					ABI:     is.precompileTwo.ABI,
+					ABI:     is.precompile.ABI,
 				},
 				contractCall: {
 					Address: contractAddr,
@@ -239,7 +240,7 @@ var _ = Describe("ERC20 Extension -", func() {
 			},
 		}
 
-		failCheck = testutil.LogCheckArgs{ABIEvents: is.precompile.Events}
+		failCheck = testutil.LogCheckArgs{ABIEvents: is.precompile.ABI.Events}
 		execRevertedCheck = failCheck.WithErrContains("execution reverted")
 		passCheck = failCheck.WithExpPass(true)
 
@@ -1131,7 +1132,7 @@ var _ = Describe("ERC20 Extension -", func() {
 				Expect(err).ToNot(HaveOccurred(), "unexpected result calling contract")
 
 				var balance *big.Int
-				err = is.precompile.UnpackIntoInterface(&balance, erc20.BalanceOfMethod, ethRes.Ret)
+				err = is.precompile.ABI.UnpackIntoInterface(&balance, erc20.BalanceOfMethod, ethRes.Ret)
 				Expect(err).ToNot(HaveOccurred(), "failed to unpack result")
 				Expect(math.NewIntFromBigInt(balance)).To(Equal(ownerInitialAmt), "expected different balance")
 			},
@@ -1159,7 +1160,7 @@ var _ = Describe("ERC20 Extension -", func() {
 				Expect(err).ToNot(HaveOccurred(), "unexpected result calling contract")
 
 				var balance *big.Int
-				err = is.precompile.UnpackIntoInterface(&balance, erc20.BalanceOfMethod, ethRes.Ret)
+				err = is.precompile.ABI.UnpackIntoInterface(&balance, erc20.BalanceOfMethod, ethRes.Ret)
 				Expect(err).ToNot(HaveOccurred(), "failed to unpack result")
 				Expect(balance.Int64()).To(BeZero(), "expected zero balance")
 			},
@@ -1180,7 +1181,7 @@ var _ = Describe("ERC20 Extension -", func() {
 				Expect(err).ToNot(HaveOccurred(), "unexpected result calling contract")
 
 				var balance *big.Int
-				err = is.precompile.UnpackIntoInterface(&balance, erc20.BalanceOfMethod, ethRes.Ret)
+				err = is.precompile.ABI.UnpackIntoInterface(&balance, erc20.BalanceOfMethod, ethRes.Ret)
 				Expect(err).ToNot(HaveOccurred(), "failed to unpack result")
 				Expect(balance.Int64()).To(BeZero(), "expected zero balance")
 			},
@@ -1206,7 +1207,7 @@ var _ = Describe("ERC20 Extension -", func() {
 				Expect(err).ToNot(HaveOccurred(), "unexpected result calling contract")
 
 				var allowance *big.Int
-				err = is.precompile.UnpackIntoInterface(&allowance, auth.AllowanceMethod, ethRes.Ret)
+				err = is.precompile.ABI.UnpackIntoInterface(&allowance, auth.AllowanceMethod, ethRes.Ret)
 				Expect(err).ToNot(HaveOccurred(), "failed to unpack result")
 				Expect(allowance).To(Equal(authzCoins[0].Amount.BigInt()), "expected different allowance")
 			},
@@ -1233,7 +1234,7 @@ var _ = Describe("ERC20 Extension -", func() {
 					Expect(err).ToNot(HaveOccurred(), "unexpected result calling contract")
 
 					var allowance *big.Int
-					err = is.precompile.UnpackIntoInterface(&allowance, auth.AllowanceMethod, ethRes.Ret)
+					err = is.precompile.ABI.UnpackIntoInterface(&allowance, auth.AllowanceMethod, ethRes.Ret)
 					Expect(err).ToNot(HaveOccurred(), "failed to unpack result")
 					Expect(allowance).To(Equal(abi.MaxUint256), "expected different allowance")
 				})
@@ -1252,7 +1253,7 @@ var _ = Describe("ERC20 Extension -", func() {
 					Expect(err).ToNot(HaveOccurred(), "unexpected result calling contract")
 
 					var allowance *big.Int
-					err = is.precompile.UnpackIntoInterface(&allowance, auth.AllowanceMethod, ethRes.Ret)
+					err = is.precompile.ABI.UnpackIntoInterface(&allowance, auth.AllowanceMethod, ethRes.Ret)
 					Expect(err).ToNot(HaveOccurred(), "failed to unpack result")
 					Expect(allowance).To(Equal(authzCoins.AmountOf(is.tokenDenom).BigInt()), "expected different allowance")
 				},
@@ -1271,7 +1272,7 @@ var _ = Describe("ERC20 Extension -", func() {
 				Expect(err).ToNot(HaveOccurred(), "unexpected result calling contract")
 
 				var allowance *big.Int
-				err = is.precompile.UnpackIntoInterface(&allowance, auth.AllowanceMethod, ethRes.Ret)
+				err = is.precompile.ABI.UnpackIntoInterface(&allowance, auth.AllowanceMethod, ethRes.Ret)
 				Expect(err).ToNot(HaveOccurred(), "failed to unpack result")
 				Expect(allowance.Int64()).To(BeZero(), "expected zero allowance")
 			},
@@ -1295,7 +1296,7 @@ var _ = Describe("ERC20 Extension -", func() {
 				Expect(err).ToNot(HaveOccurred(), "unexpected result calling contract")
 
 				var allowance *big.Int
-				err = is.precompile.UnpackIntoInterface(&allowance, auth.AllowanceMethod, ethRes.Ret)
+				err = is.precompile.ABI.UnpackIntoInterface(&allowance, auth.AllowanceMethod, ethRes.Ret)
 				Expect(err).ToNot(HaveOccurred(), "failed to unpack result")
 				Expect(allowance.Int64()).To(BeZero(), "expected zero allowance")
 			},
@@ -1315,7 +1316,7 @@ var _ = Describe("ERC20 Extension -", func() {
 				Expect(err).ToNot(HaveOccurred(), "unexpected result calling contract")
 
 				var allowance *big.Int
-				err = is.precompile.UnpackIntoInterface(&allowance, auth.AllowanceMethod, ethRes.Ret)
+				err = is.precompile.ABI.UnpackIntoInterface(&allowance, auth.AllowanceMethod, ethRes.Ret)
 				Expect(err).ToNot(HaveOccurred(), "failed to unpack result")
 				Expect(allowance.Int64()).To(BeZero(), "expected zero allowance")
 			},
@@ -1352,7 +1353,7 @@ var _ = Describe("ERC20 Extension -", func() {
 				Expect(err).ToNot(HaveOccurred(), "unexpected result calling contract")
 
 				var supply *big.Int
-				err = is.precompile.UnpackIntoInterface(&supply, erc20.TotalSupplyMethod, ethRes.Ret)
+				err = is.precompile.ABI.UnpackIntoInterface(&supply, erc20.TotalSupplyMethod, ethRes.Ret)
 				Expect(err).ToNot(HaveOccurred(), "failed to unpack result")
 				Expect(supply).To(Equal(expSupply), "expected different supply")
 			},
@@ -1371,7 +1372,7 @@ var _ = Describe("ERC20 Extension -", func() {
 				Expect(err).ToNot(HaveOccurred(), "unexpected result calling contract")
 
 				var supply *big.Int
-				err = is.precompile.UnpackIntoInterface(&supply, erc20.TotalSupplyMethod, ethRes.Ret)
+				err = is.precompile.ABI.UnpackIntoInterface(&supply, erc20.TotalSupplyMethod, ethRes.Ret)
 				Expect(err).ToNot(HaveOccurred(), "failed to unpack result")
 				Expect(supply.Int64()).To(BeZero(), "expected zero supply")
 			},
@@ -1995,7 +1996,7 @@ var _ = Describe("ERC20 Extension -", func() {
 				Expect(err).ToNot(HaveOccurred(), "unexpected result calling contract")
 
 				var name string
-				err = is.precompile.UnpackIntoInterface(&name, erc20.NameMethod, ethRes.Ret)
+				err = is.precompile.ABI.UnpackIntoInterface(&name, erc20.NameMethod, ethRes.Ret)
 				Expect(err).ToNot(HaveOccurred(), "failed to unpack result")
 				Expect(name).To(Equal(expName), "expected different name")
 			},
@@ -2011,7 +2012,7 @@ var _ = Describe("ERC20 Extension -", func() {
 				Expect(err).ToNot(HaveOccurred(), "unexpected result calling contract")
 
 				var symbol string
-				err = is.precompile.UnpackIntoInterface(&symbol, erc20.SymbolMethod, ethRes.Ret)
+				err = is.precompile.ABI.UnpackIntoInterface(&symbol, erc20.SymbolMethod, ethRes.Ret)
 				Expect(err).ToNot(HaveOccurred(), "failed to unpack result")
 				Expect(symbol).To(Equal(expSymbol), "expected different symbol")
 			},
@@ -2027,7 +2028,7 @@ var _ = Describe("ERC20 Extension -", func() {
 				Expect(err).ToNot(HaveOccurred(), "unexpected result calling contract")
 
 				var decimals uint8
-				err = is.precompile.UnpackIntoInterface(&decimals, erc20.DecimalsMethod, ethRes.Ret)
+				err = is.precompile.ABI.UnpackIntoInterface(&decimals, erc20.DecimalsMethod, ethRes.Ret)
 				Expect(err).ToNot(HaveOccurred(), "failed to unpack result")
 				Expect(decimals).To(Equal(expDecimals), "expected different decimals")
 			},

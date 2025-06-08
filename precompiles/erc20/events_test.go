@@ -33,7 +33,7 @@ func (s *PrecompileTestSuite) TestEmitTransferEvent() {
 			s.SetupTest()
 			stateDB := s.network.GetStateDB()
 
-			err := s.precompile.EmitTransferEvent(
+			err := s.executor.EmitTransferEvent(
 				s.network.GetContext(), stateDB, tc.from, tc.to, tc.amount,
 			)
 			s.Require().NoError(err, "expected transfer event to be emitted successfully")
@@ -81,7 +81,7 @@ func (s *PrecompileTestSuite) TestEmitApprovalEvent() {
 
 			stateDB := s.network.GetStateDB()
 
-			err := s.precompile.EmitApprovalEvent(
+			err := s.executor.EmitApprovalEvent(
 				s.network.GetContext(), stateDB, tc.owner, tc.spender, tc.amount,
 			)
 			s.Require().NoError(err, "expected approval event to be emitted successfully")

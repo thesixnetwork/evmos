@@ -193,7 +193,7 @@ func (s *PrecompileTestSuite) TestNameSymbol() {
 				tc.malleate(s.network.GetContext(), s.network.App)
 			}
 
-			precompile := s.setupERC20Precompile(tc.denom)
+			precompile := s.setupERC20Executor(tc.denom)
 
 			s.Run("name", func() {
 				bz, err := precompile.Name(
@@ -342,7 +342,7 @@ func (s *PrecompileTestSuite) TestDecimals() {
 				tc.malleate(s.network.GetContext(), s.network.App)
 			}
 
-			precompile := s.setupERC20Precompile(tc.denom)
+			precompile := s.setupERC20Executor(tc.denom)
 
 			bz, err := precompile.Decimals(
 				s.network.GetContext(),
@@ -395,8 +395,7 @@ func (s *PrecompileTestSuite) TestTotalSupply() {
 				tc.malleate(s.network.GetContext(), s.network.App, tc.expTotal)
 			}
 
-			precompile := s.setupERC20Precompile(validMetadataDenom)
-
+			precompile := s.setupERC20Executor(validMetadataDenom)
 			bz, err := precompile.TotalSupply(
 				s.network.GetContext(),
 				common.Address{},
@@ -476,7 +475,7 @@ func (s *PrecompileTestSuite) TestBalanceOf() {
 				balanceOfArgs = tc.malleate(s.network.GetContext(), s.network.App, tc.expBalance)
 			}
 
-			precompile := s.setupERC20Precompile(s.tokenDenom)
+			precompile := s.setupERC20Executor(s.tokenDenom)
 
 			bz, err := precompile.BalanceOf(
 				s.network.GetContext(),
@@ -578,7 +577,7 @@ func (s *PrecompileTestSuite) TestAllowance() {
 				allowanceArgs = tc.malleate(s.network.GetContext(), s.network.App, tc.expAllow)
 			}
 
-			precompile := s.setupERC20Precompile(s.tokenDenom)
+			precompile := s.setupERC20Executor(s.tokenDenom)
 
 			bz, err := precompile.Allowance(
 				s.network.GetContext(),

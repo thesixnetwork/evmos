@@ -242,7 +242,7 @@ func (s *PrecompileTestSuite) TestApprove() {
 				args = tc.malleate()
 			}
 
-			bz, err := s.precompile.Approve(
+			bz, err := s.executor.Approve(
 				ctx,
 				contract.CallerAddress,
 				s.network.GetStateDB(),
@@ -440,7 +440,7 @@ func (s *PrecompileTestSuite) TestIncreaseAllowance() {
 				args = tc.malleate()
 			}
 
-			bz, err := s.precompile.IncreaseAllowance(
+			bz, err := s.executor.IncreaseAllowance(
 				ctx,
 				contract.CallerAddress,
 				s.network.GetStateDB(),
@@ -739,7 +739,7 @@ func (s *PrecompileTestSuite) TestDecreaseAllowance() {
 				args = tc.malleate()
 			}
 
-			bz, err := s.precompile.DecreaseAllowance(
+			bz, err := s.executor.DecreaseAllowance(
 				ctx,
 				contract.CallerAddress,
 				s.network.GetStateDB(),

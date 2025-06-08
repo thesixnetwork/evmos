@@ -25,7 +25,7 @@ const (
 // HexToBech32 converts a hex address to its corresponding Bech32 format. The Human Readable Prefix
 // (HRP) must be provided in the arguments. This function fails if the address is invalid or if the
 // bech32 conversion fails.
-func (p Precompile) HexToBech32(
+func (p Bech32Executor) HexToBech32(
 	method *abi.Method,
 	args []interface{},
 ) ([]byte, error) {
@@ -64,7 +64,7 @@ func (p Precompile) HexToBech32(
 // Bech32ToHex converts a bech32 address to its corresponding EIP-55 hex format. The Human Readable Prefix
 // (HRP) must be provided in the arguments. This function fails if the address is invalid or if the
 // bech32 conversion fails.
-func (p Precompile) Bech32ToHex(
+func (p Bech32Executor) Bech32ToHex(
 	method *abi.Method,
 	args []interface{},
 ) ([]byte, error) {

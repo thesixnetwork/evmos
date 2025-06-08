@@ -13,18 +13,8 @@ import (
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
-	cmn "github.com/evmos/evmos/v20/precompiles/common"
 	"github.com/evmos/evmos/v20/utils"
 	"github.com/evmos/evmos/v20/x/evm/core/vm"
-)
-
-const (
-	// TransferMethod defines the ABI method name for the ERC-20 transfer
-	// transaction.
-	TransferMethod = "transfer"
-	// TransferFromMethod defines the ABI method name for the ERC-20 transferFrom
-	// transaction.
-	TransferFromMethod = "transferFrom"
 )
 
 // SendMsgURL defines the authorization type for MsgSend
@@ -32,7 +22,7 @@ var SendMsgURL = sdk.MsgTypeURL(&banktypes.MsgSend{})
 
 // Transfer executes a direct transfer from the caller address to the
 // destination address.
-func (p *Precompile) Transfer(
+func (e *ERC20Executor) Transfer(
 	ctx sdk.Context,
 	caller common.Address,
 	stateDB vm.StateDB,
@@ -45,12 +35,12 @@ func (p *Precompile) Transfer(
 		return nil, err
 	}
 
-	return p.transfer(ctx, caller, stateDB, method, from, to, amount)
+	return e.transfer(ctx, caller, stateDB, method, from, to, amount)
 }
 
 // TransferFrom executes a transfer on behalf of the specified from address in
 // the call data to the destination address.
-func (p *Precompile) TransferFrom(
+func (e *ERC20Executor) TransferFrom(
 	ctx sdk.Context,
 	caller common.Address,
 	stateDB vm.StateDB,
@@ -62,13 +52,13 @@ func (p *Precompile) TransferFrom(
 		return nil, err
 	}
 
-	return p.transfer(ctx, caller, stateDB, method, from, to, amount)
+	return e.transfer(ctx, caller, stateDB, method, from, to, amount)
 }
 
 // transfer is a common function that handles transfers for the ERC-20 Transfer
 // and TransferFrom methods. It executes a bank Send message if the spender is
 // the sender of the transfer, otherwise it executes an authorization.
-func (p *Precompile) transfer(
+func (e *ERC20Executor) transfer(
 	ctx sdk.Context,
 	caller common.Address,
 	stateDB vm.StateDB,
@@ -76,7 +66,7 @@ func (p *Precompile) transfer(
 	from, to common.Address,
 	amount *big.Int,
 ) (data []byte, err error) {
-	coins := sdk.Coins{{Denom: p.tokenPair.Denom, Amount: math.NewIntFromBigInt(amount)}}
+	coins := sdk.Coins{{Denom: e.tokenPair.Denom, Amount: math.NewIntFromBigInt(amount)}}
 
 	msg := banktypes.NewMsgSend(from.Bytes(), to.Bytes(), coins)
 
@@ -92,15 +82,15 @@ func (p *Precompile) transfer(
 
 	var prevAllowance *big.Int
 	if ownerIsSpender {
-		msgSrv := bankkeeper.NewMsgServerImpl(p.bankKeeper)
+		msgSrv := bankkeeper.NewMsgServerImpl(e.BankKeeper)
 		_, err = msgSrv.Send(ctx, msg)
 	} else {
-		_, _, prevAllowance, err = GetAuthzExpirationAndAllowance(p.AuthzKeeper, ctx, spenderAddr, from, p.tokenPair.Denom)
+		_, _, prevAllowance, err = GetAuthzExpirationAndAllowance(e.AuthzKeeper, ctx, spenderAddr, from, e.tokenPair.Denom)
 		if err != nil {
 			return nil, ConvertErrToERC20Error(errorsmod.Wrapf(authz.ErrNoAuthorizationFound, "%s", err.Error()))
 		}
 
-		_, err = p.AuthzKeeper.DispatchActions(ctx, spender, []sdk.Msg{msg})
+		_, err = e.AuthzKeeper.DispatchActions(ctx, spender, []sdk.Msg{msg})
 	}
 
 	if err != nil {
@@ -110,12 +100,11 @@ func (p *Precompile) transfer(
 	}
 
 	// TODO: where should we get this
-	if p.tokenPair.Denom == utils.BaseDenom {
-		p.SetBalanceChangeEntries(cmn.NewBalanceChangeEntry(from, msg.Amount.AmountOf(utils.BaseDenom).BigInt(), cmn.Sub),
-			cmn.NewBalanceChangeEntry(to, msg.Amount.AmountOf(utils.BaseDenom).BigInt(), cmn.Add))
+	if e.tokenPair.Denom == utils.BaseDenom {
+		// e.SetBalanceChangeEntries(cmn.NewBalanceChangeEntry(from, msg.Amount.AmountOf(utils.BaseDenom).BigInt(), cmn.Sub), cmn.NewBalanceChangeEntry(to, msg.Amount.AmountOf(utils.BaseDenom).BigInt(), cmn.Add))
 	}
 
-	if err = p.EmitTransferEvent(ctx, stateDB, from, to, amount); err != nil {
+	if err = e.EmitTransferEvent(ctx, stateDB, from, to, amount); err != nil {
 		return nil, err
 	}
 
@@ -134,7 +123,7 @@ func (p *Precompile) transfer(
 		newAllowance = new(big.Int).Sub(prevAllowance, amount)
 	}
 
-	if err = p.EmitApprovalEvent(ctx, stateDB, from, spenderAddr, newAllowance); err != nil {
+	if err = e.EmitApprovalEvent(ctx, stateDB, from, spenderAddr, newAllowance); err != nil {
 		return nil, err
 	}
 

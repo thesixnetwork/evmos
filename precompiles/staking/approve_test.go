@@ -171,7 +171,7 @@ func (s *PrecompileTestSuite) TestApprove() {
 		{
 			"success - remove MsgDelegate authorization",
 			func(_ *vm.Contract, granter, grantee testkeyring.Key) []interface{} {
-				res, err := s.precompile.Approve(ctx, granter.Addr, stDB, &method, []interface{}{
+				res, err := s.executor.Approve(ctx, granter.Addr, stDB, &method, []interface{}{
 					grantee.Addr, big.NewInt(1), []string{staking.DelegateMsg},
 				})
 				s.Require().NoError(err)
@@ -364,7 +364,7 @@ func (s *PrecompileTestSuite) TestApprove() {
 			contract, ctx = testutil.NewPrecompileContract(s.T(), ctx, granter.Addr, s.precompile, tc.gas)
 
 			args := tc.malleate(contract, granter, grantee)
-			bz, err := s.precompile.Approve(ctx, granter.Addr, stDB, &method, args)
+			bz, err := s.executor.Approve(ctx, granter.Addr, stDB, &method, args)
 
 			if tc.expError {
 				s.Require().ErrorContains(err, tc.errContains)
@@ -460,7 +460,7 @@ func (s *PrecompileTestSuite) TestDecreaseAllowance() {
 					big.NewInt(1e18),
 					[]string{staking.DelegateMsg},
 				}
-				resp, err := s.precompile.Approve(ctx, granter.Addr, stDB, &method, approveArgs)
+				resp, err := s.executor.Approve(ctx, granter.Addr, stDB, &method, approveArgs)
 				s.Require().NoError(err)
 				s.Require().Equal(resp, cmn.TrueValue)
 
@@ -515,7 +515,7 @@ func (s *PrecompileTestSuite) TestDecreaseAllowance() {
 			contract, ctx = testutil.NewPrecompileContract(s.T(), ctx, granter.Addr, s.precompile, tc.gas)
 
 			args := tc.malleate(contract, granter, grantee)
-			bz, err := s.precompile.DecreaseAllowance(ctx, granter.Addr, stDB, &method, args)
+			bz, err := s.executor.DecreaseAllowance(ctx, granter.Addr, stDB, &method, args)
 
 			if tc.expError {
 				s.Require().ErrorContains(err, tc.errContains)
@@ -592,7 +592,7 @@ func (s *PrecompileTestSuite) TestIncreaseAllowance() {
 					abi.MaxUint256,
 					[]string{staking.DelegateMsg},
 				}
-				resp, err := s.precompile.Approve(ctx, granter.Addr, stDB, &method, approveArgs)
+				resp, err := s.executor.Approve(ctx, granter.Addr, stDB, &method, approveArgs)
 				s.Require().NoError(err)
 				s.Require().Equal(resp, cmn.TrueValue)
 
@@ -645,7 +645,7 @@ func (s *PrecompileTestSuite) TestIncreaseAllowance() {
 			grantee := s.keyring.GetKey(1)
 
 			args := tc.malleate(granter, grantee)
-			bz, err := s.precompile.IncreaseAllowance(ctx, granter.Addr, stDB, &method, args)
+			bz, err := s.executor.IncreaseAllowance(ctx, granter.Addr, stDB, &method, args)
 
 			if tc.expError {
 				s.Require().ErrorContains(err, tc.errContains)
@@ -744,7 +744,7 @@ func (s *PrecompileTestSuite) TestRevoke() {
 			s.Require().NotNil(authz, "expected authorization to be set")
 
 			args := tc.malleate(grantee)
-			bz, err := s.precompile.Revoke(ctx, granter.Addr, s.network.GetStateDB(), &method, args)
+			bz, err := s.executor.Revoke(ctx, granter.Addr, s.network.GetStateDB(), &method, args)
 
 			if tc.expError {
 				s.Require().ErrorContains(err, tc.errContains)

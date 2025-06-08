@@ -107,7 +107,7 @@ func (s *PrecompileTestSuite) TestDelegation() {
 			s.SetupTest() // reset
 			contract := vm.NewPrecompile(vm.AccountRef(s.keyring.GetAddr(0)), s.precompile, big.NewInt(0), tc.gas)
 
-			bz, err := s.precompile.Delegation(s.network.GetContext(), contract.CallerAddress, &method, tc.malleate(s.network.GetValidators()[0].OperatorAddress))
+			bz, err := s.executor.Delegation(s.network.GetContext(), contract.CallerAddress, &method, tc.malleate(s.network.GetValidators()[0].OperatorAddress))
 
 			if tc.expErr {
 				s.Require().Error(err)
@@ -206,7 +206,7 @@ func (s *PrecompileTestSuite) TestUnbondingDelegation() {
 			_, _, err = s.network.App.StakingKeeper.Undelegate(s.network.GetContext(), s.keyring.GetAddr(0).Bytes(), valAddr, math.LegacyNewDec(1))
 			s.Require().NoError(err)
 
-			bz, err := s.precompile.UnbondingDelegation(s.network.GetContext(), contract.CallerAddress, &method, tc.malleate(s.network.GetValidators()[0].OperatorAddress))
+			bz, err := s.executor.UnbondingDelegation(s.network.GetContext(), contract.CallerAddress, &method, tc.malleate(s.network.GetValidators()[0].OperatorAddress))
 
 			if tc.expErr {
 				s.Require().Error(err)
@@ -290,7 +290,7 @@ func (s *PrecompileTestSuite) TestValidator() {
 			operatorAddress, err := sdk.ValAddressFromBech32(s.network.GetValidators()[0].OperatorAddress)
 			s.Require().NoError(err)
 
-			bz, err := s.precompile.Validator(s.network.GetContext(), &method, contract.CallerAddress, tc.malleate(common.BytesToAddress(operatorAddress.Bytes())))
+			bz, err := s.executor.Validator(s.network.GetContext(), &method, contract.CallerAddress, tc.malleate(common.BytesToAddress(operatorAddress.Bytes())))
 
 			if tc.expErr {
 				s.Require().Error(err)
@@ -399,7 +399,7 @@ func (s *PrecompileTestSuite) TestValidators() {
 			s.SetupTest() // reset
 			contract := vm.NewPrecompile(vm.AccountRef(s.keyring.GetAddr(0)), s.precompile, big.NewInt(0), tc.gas)
 
-			bz, err := s.precompile.Validators(s.network.GetContext(), &method, contract.CallerAddress, tc.malleate())
+			bz, err := s.executor.Validators(s.network.GetContext(), &method, contract.CallerAddress, tc.malleate())
 
 			if tc.expErr {
 				s.Require().Error(err)
@@ -533,10 +533,10 @@ func (s *PrecompileTestSuite) TestRedelegation() {
 			err := s.CreateAuthorization(s.network.GetContext(), s.keyring.GetAccAddr(0), s.keyring.GetAccAddr(0), staking.RedelegateAuthz, nil)
 			s.Require().NoError(err)
 
-			_, err = s.precompile.Redelegate(s.network.GetContext(), s.keyring.GetAddr(0), contract.CallerAddress, s.network.GetStateDB(), &redelegateMethod, delegationArgs)
+			_, err = s.executor.Redelegate(s.network.GetContext(), s.keyring.GetAddr(0), contract.CallerAddress, s.network.GetStateDB(), &redelegateMethod, delegationArgs)
 			s.Require().NoError(err)
 
-			bz, err := s.precompile.Redelegation(s.network.GetContext(), &method, contract.CallerAddress, tc.malleate(s.network.GetValidators()[0].OperatorAddress, s.network.GetValidators()[1].OperatorAddress))
+			bz, err := s.executor.Redelegation(s.network.GetContext(), &method, contract.CallerAddress, tc.malleate(s.network.GetValidators()[0].OperatorAddress, s.network.GetValidators()[1].OperatorAddress))
 
 			if tc.expErr {
 				s.Require().Error(err)
@@ -688,7 +688,7 @@ func (s *PrecompileTestSuite) TestRedelegations() {
 			s.Require().NoError(err)
 
 			// query redelegations
-			bz, err := s.precompile.Redelegations(s.network.GetContext(), &method, contract.CallerAddress, tc.malleate())
+			bz, err := s.executor.Redelegations(s.network.GetContext(), &method, contract.CallerAddress, tc.malleate())
 
 			if tc.expErr {
 				s.Require().Error(err)
@@ -774,7 +774,7 @@ func (s *PrecompileTestSuite) TestAllowance() {
 			contract := vm.NewPrecompile(vm.AccountRef(s.keyring.GetAddr(0)), s.precompile, big.NewInt(0), tc.gas)
 
 			args := tc.malleate()
-			bz, err := s.precompile.Allowance(s.network.GetContext(), &method, contract.CallerAddress, args)
+			bz, err := s.executor.Allowance(s.network.GetContext(), &method, contract.CallerAddress, args)
 
 			if tc.expErr {
 				s.Require().Error(err)

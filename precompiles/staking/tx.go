@@ -13,7 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/evmos/evmos/v20/precompiles/authorization"
-	cmn "github.com/evmos/evmos/v20/precompiles/common"
 	"github.com/evmos/evmos/v20/x/evm/core/vm"
 
 	stakingkeeper "github.com/evmos/evmos/v20/x/staking/keeper"
@@ -50,7 +49,7 @@ const (
 )
 
 // CreateValidator performs create validator.
-func (p Precompile) CreateValidator(
+func (p StakingExecutor) CreateValidator(
 	ctx sdk.Context,
 	origin common.Address,
 	caller common.Address,
@@ -107,7 +106,7 @@ func (p Precompile) CreateValidator(
 }
 
 // EditValidator performs edit validator.
-func (p Precompile) EditValidator(
+func (p StakingExecutor) EditValidator(
 	ctx sdk.Context,
 	origin common.Address,
 	caller common.Address,
@@ -155,7 +154,7 @@ func (p Precompile) EditValidator(
 }
 
 // Delegate performs a delegation of coins from a delegator to a validator.
-func (p *Precompile) Delegate(
+func (p *StakingExecutor) Delegate(
 	ctx sdk.Context,
 	origin common.Address,
 	caller common.Address,
@@ -209,7 +208,7 @@ func (p *Precompile) Delegate(
 	// no need to have authorization when the contract caller is the same as origin (owner of funds)
 	if !isCallerOrigin {
 		// Check if the authorization grant exists for the caller and the origin
-		stakeAuthz, expiration, err = authorization.CheckAuthzAndAllowanceForGranter(ctx, p.AuthzKeeper, caller, delegatorHexAddr, &msg.Amount, DelegateMsg)
+		stakeAuthz, expiration, err = authorization.CheckAuthzAndAllowanceForGranter(ctx, p.authzKeeper, caller, delegatorHexAddr, &msg.Amount, DelegateMsg)
 		if err != nil {
 			return nil, err
 		}
@@ -234,13 +233,13 @@ func (p *Precompile) Delegate(
 	}
 
 	if !isCallerOrigin {
-		// get the delegator address from the message
-		delAccAddr := sdk.MustAccAddressFromBech32(msg.DelegatorAddress)
-		delHexAddr := common.BytesToAddress(delAccAddr)
-		// NOTE: This ensures that the changes in the bank keeper are correctly mirrored to the EVM stateDB
-		// when calling the precompile from a smart contract
-		// This prevents the stateDB from overwriting the changed balance in the bank keeper when committing the EVM state.
-		p.SetBalanceChangeEntries(cmn.NewBalanceChangeEntry(delHexAddr, msg.Amount.Amount.BigInt(), cmn.Sub))
+		// // get the delegator address from the message
+		// delAccAddr := sdk.MustAccAddressFromBech32(msg.DelegatorAddress)
+		// delHexAddr := common.BytesToAddress(delAccAddr)
+		// // NOTE: This ensures that the changes in the bank keeper are correctly mirrored to the EVM stateDB
+		// // when calling the StakingExecutor from a smart contract
+		// // This prevents the stateDB from overwriting the changed balance in the bank keeper when committing the EVM state.
+		// p.SetBalanceChangeEntries(cmn.NewBalanceChangeEntry(delHexAddr, msg.Amount.Amount.BigInt(), cmn.Sub))
 	}
 
 	return method.Outputs.Pack(true)
@@ -248,7 +247,7 @@ func (p *Precompile) Delegate(
 
 // Undelegate performs the undelegation of coins from a validator for a delegate.
 // The provided amount cannot be negative. This is validated in the msg.ValidateBasic() function.
-func (p Precompile) Undelegate(
+func (p StakingExecutor) Undelegate(
 	ctx sdk.Context,
 	origin common.Address,
 	caller common.Address,
@@ -302,7 +301,7 @@ func (p Precompile) Undelegate(
 	// no need to have authorization when the contract caller is the same as origin (owner of funds)
 	if !isCallerOrigin {
 		// Check if the authorization grant exists for the caller and the origin
-		stakeAuthz, expiration, err = authorization.CheckAuthzAndAllowanceForGranter(ctx, p.AuthzKeeper, caller, delegatorHexAddr, &msg.Amount, UndelegateMsg)
+		stakeAuthz, expiration, err = authorization.CheckAuthzAndAllowanceForGranter(ctx, p.authzKeeper, caller, delegatorHexAddr, &msg.Amount, UndelegateMsg)
 		if err != nil {
 			return nil, err
 		}
@@ -333,7 +332,7 @@ func (p Precompile) Undelegate(
 // Redelegate performs a redelegation of coins for a delegate from a source validator
 // to a destination validator.
 // The provided amount cannot be negative. This is validated in the msg.ValidateBasic() function.
-func (p Precompile) Redelegate(
+func (p StakingExecutor) Redelegate(
 	ctx sdk.Context,
 	origin common.Address,
 	caller common.Address,
@@ -388,7 +387,7 @@ func (p Precompile) Redelegate(
 	// no need to have authorization when the contract caller is the same as origin (owner of funds)
 	if !isCallerOrigin {
 		// Check if the authorization grant exists for the caller and the origin
-		stakeAuthz, expiration, err = authorization.CheckAuthzAndAllowanceForGranter(ctx, p.AuthzKeeper, caller, delegatorHexAddr, &msg.Amount, RedelegateMsg)
+		stakeAuthz, expiration, err = authorization.CheckAuthzAndAllowanceForGranter(ctx, p.authzKeeper, caller, delegatorHexAddr, &msg.Amount, RedelegateMsg)
 		if err != nil {
 			return nil, err
 		}
@@ -417,7 +416,7 @@ func (p Precompile) Redelegate(
 // CancelUnbondingDelegation will cancel the unbonding of a delegation and delegate
 // back to the validator being unbonded from.
 // The provided amount cannot be negative. This is validated in the msg.ValidateBasic() function.
-func (p Precompile) CancelUnbondingDelegation(
+func (p StakingExecutor) CancelUnbondingDelegation(
 	ctx sdk.Context,
 	origin common.Address,
 	caller common.Address,
@@ -472,7 +471,7 @@ func (p Precompile) CancelUnbondingDelegation(
 	// no need to have authorization when the contract caller is the same as origin (owner of funds)
 	if !isCallerOrigin {
 		// Check if the authorization grant exists for the caller and the origin
-		stakeAuthz, expiration, err = authorization.CheckAuthzAndAllowanceForGranter(ctx, p.AuthzKeeper, caller, delegatorHexAddr, &msg.Amount, CancelUnbondingDelegationMsg)
+		stakeAuthz, expiration, err = authorization.CheckAuthzAndAllowanceForGranter(ctx, p.authzKeeper, caller, delegatorHexAddr, &msg.Amount, CancelUnbondingDelegationMsg)
 		if err != nil {
 			return nil, err
 		}

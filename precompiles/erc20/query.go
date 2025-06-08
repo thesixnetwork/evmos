@@ -23,40 +23,20 @@ import (
 	"github.com/evmos/evmos/v20/x/evm/core/vm"
 )
 
-const (
-	// NameMethod defines the ABI method name for the ERC-20 Name
-	// query.
-	NameMethod = "name"
-	// SymbolMethod defines the ABI method name for the ERC-20 Symbol
-	// query.
-	SymbolMethod = "symbol"
-	// DecimalsMethod defines the ABI method name for the ERC-20 Decimals
-	// query.
-	DecimalsMethod = "decimals"
-	// TotalSupplyMethod defines the ABI method name for the ERC-20 TotalSupply
-	// query.
-	TotalSupplyMethod = "totalSupply"
-	// BalanceOfMethod defines the ABI method name for the ERC-20 BalanceOf
-	// query.
-	BalanceOfMethod = "balanceOf"
-)
-
-// Name returns the name of the token. If the token metadata is registered in the
-// bank module, it returns its name. Otherwise, it returns the base denomination of
-// the token capitalized (e.g. uatom -> Atom).
-func (p Precompile) Name(
+// Name returns the name of the token
+func (e *ERC20Executor) Name(
 	ctx sdk.Context,
-	caller common.Address,
+	_ common.Address,
 	_ vm.StateDB,
 	method *abi.Method,
 	_ []interface{},
 ) ([]byte, error) {
-	metadata, found := p.bankKeeper.GetDenomMetaData(ctx, p.tokenPair.Denom)
+	metadata, found := e.BankKeeper.GetDenomMetaData(ctx, e.tokenPair.Denom)
 	if found {
 		return method.Outputs.Pack(metadata.Name)
 	}
 
-	baseDenom, err := p.getBaseDenomFromIBCVoucher(ctx, p.tokenPair.Denom)
+	baseDenom, err := e.getBaseDenomFromIBCVoucher(ctx, e.tokenPair.Denom)
 	if err != nil {
 		return nil, ConvertErrToERC20Error(err)
 	}
@@ -65,22 +45,20 @@ func (p Precompile) Name(
 	return method.Outputs.Pack(name)
 }
 
-// Symbol returns the symbol of the token. If the token metadata is registered in the
-// bank module, it returns its symbol. Otherwise, it returns the base denomination of
-// the token in uppercase (e.g. uatom -> ATOM).
-func (p Precompile) Symbol(
+// Symbol returns the symbol of the token
+func (e *ERC20Executor) Symbol(
 	ctx sdk.Context,
-	caller common.Address,
+	_ common.Address,
 	_ vm.StateDB,
 	method *abi.Method,
 	_ []interface{},
 ) ([]byte, error) {
-	metadata, found := p.bankKeeper.GetDenomMetaData(ctx, p.tokenPair.Denom)
+	metadata, found := e.BankKeeper.GetDenomMetaData(ctx, e.tokenPair.Denom)
 	if found {
 		return method.Outputs.Pack(metadata.Symbol)
 	}
 
-	baseDenom, err := p.getBaseDenomFromIBCVoucher(ctx, p.tokenPair.Denom)
+	baseDenom, err := e.getBaseDenomFromIBCVoucher(ctx, e.tokenPair.Denom)
 	if err != nil {
 		return nil, ConvertErrToERC20Error(err)
 	}
@@ -89,19 +67,17 @@ func (p Precompile) Symbol(
 	return method.Outputs.Pack(symbol)
 }
 
-// Decimals returns the decimals places of the token. If the token metadata is registered in the
-// bank module, it returns the display denomination exponent. Otherwise, it infers the decimal
-// value from the first character of the base denomination (e.g. uatom -> 6).
-func (p Precompile) Decimals(
+// Decimals returns the decimals of the token
+func (e *ERC20Executor) Decimals(
 	ctx sdk.Context,
-	caller common.Address,
+	_ common.Address,
 	_ vm.StateDB,
 	method *abi.Method,
 	_ []interface{},
 ) ([]byte, error) {
-	metadata, found := p.bankKeeper.GetDenomMetaData(ctx, p.tokenPair.Denom)
+	metadata, found := e.BankKeeper.GetDenomMetaData(ctx, e.tokenPair.Denom)
 	if !found {
-		denomTrace, err := ibc.GetDenomTrace(p.transferKeeper, ctx, p.tokenPair.Denom)
+		denomTrace, err := ibc.GetDenomTrace(e.TransferKeeper, ctx, e.tokenPair.Denom)
 		if err != nil {
 			return nil, ConvertErrToERC20Error(err)
 		}
@@ -129,7 +105,7 @@ func (p Precompile) Decimals(
 	if !displayFound {
 		return nil, ConvertErrToERC20Error(fmt.Errorf(
 			"display denomination not found for denom: %q",
-			p.tokenPair.Denom,
+			e.tokenPair.Denom,
 		))
 	}
 
@@ -143,25 +119,22 @@ func (p Precompile) Decimals(
 	return method.Outputs.Pack(uint8(decimals)) //#nosec G115 G701 // we are checking for overflow above
 }
 
-// TotalSupply returns the amount of tokens in existence. It fetches the supply
-// of the coin from the bank keeper and returns zero if not found.
-func (p Precompile) TotalSupply(
+// TotalSupply returns the total supply of the token
+func (e *ERC20Executor) TotalSupply(
 	ctx sdk.Context,
-	caller common.Address,
+	_ common.Address,
 	_ vm.StateDB,
 	method *abi.Method,
 	_ []interface{},
 ) ([]byte, error) {
-	supply := p.bankKeeper.GetSupply(ctx, p.tokenPair.Denom)
-
-	return method.Outputs.Pack(supply.Amount.BigInt())
+	supply := e.BankKeeper.GetSupply(ctx, e.tokenPair.GetDenom()).Amount.BigInt()
+	return method.Outputs.Pack(supply)
 }
 
-// BalanceOf returns the amount of tokens owned by account. It fetches the balance
-// of the coin from the bank keeper and returns zero if not found.
-func (p Precompile) BalanceOf(
+// BalanceOf returns the balance of the given account address
+func (e *ERC20Executor) BalanceOf(
 	ctx sdk.Context,
-	caller common.Address,
+	_ common.Address,
 	_ vm.StateDB,
 	method *abi.Method,
 	args []interface{},
@@ -171,16 +144,17 @@ func (p Precompile) BalanceOf(
 		return nil, err
 	}
 
-	balance := p.bankKeeper.GetBalance(ctx, account.Bytes(), p.tokenPair.Denom)
+	balance := e.BankKeeper.GetBalance(
+		ctx, account.Bytes(), e.tokenPair.GetDenom(),
+	).Amount.BigInt()
 
-	return method.Outputs.Pack(balance.Amount.BigInt())
+	return method.Outputs.Pack(balance)
 }
 
-// Allowance returns the remaining allowance of a spender to the contract by
-// checking the existence of a bank SendAuthorization.
-func (p Precompile) Allowance(
+// Allowance returns the amount which spender is still allowed to withdraw from owner
+func (e *ERC20Executor) Allowance(
 	ctx sdk.Context,
-	caller common.Address,
+	_ common.Address,
 	_ vm.StateDB,
 	method *abi.Method,
 	args []interface{},
@@ -189,25 +163,23 @@ func (p Precompile) Allowance(
 	if err != nil {
 		return nil, err
 	}
-
 	// NOTE: In case the allowance is queried by the owner, we return the max uint256 value, which
 	// resembles an infinite allowance.
 	if bytes.Equal(owner.Bytes(), spender.Bytes()) {
 		return method.Outputs.Pack(abi.MaxUint256)
 	}
 
-	_, _, allowance, err := GetAuthzExpirationAndAllowance(p.AuthzKeeper, ctx, spender, owner, p.tokenPair.Denom)
+	_, _, allowance, err := GetAuthzExpirationAndAllowance(e.AuthzKeeper, ctx, spender, owner, e.tokenPair.Denom)
 	if err != nil {
 		// NOTE: We are not returning the error here, because we want to align the behavior with
 		// standard ERC20 smart contracts, which return zero if an allowance is not found.
 		allowance = common.Big0
 	}
-
 	return method.Outputs.Pack(allowance)
 }
 
-// GetAuthzExpirationAndAllowance returns the authorization, its expiration as well as the amount of denom
-// that the grantee is allowed to spend on behalf of the granter.
+// GetAuthzExpirationAndAllowance retrieves the authorization for the given grantee and granter,
+// along with the expiration time and current allowance for the specified denomination.
 func GetAuthzExpirationAndAllowance(
 	authzKeeper authzkeeper.Keeper,
 	ctx sdk.Context,
@@ -231,9 +203,9 @@ func GetAuthzExpirationAndAllowance(
 }
 
 // getBaseDenomFromIBCVoucher returns the base denomination from the given IBC voucher denomination.
-func (p Precompile) getBaseDenomFromIBCVoucher(ctx sdk.Context, denom string) (string, error) {
+func (e ERC20Executor) getBaseDenomFromIBCVoucher(ctx sdk.Context, denom string) (string, error) {
 	// Infer the denomination name from the coin denomination base denom
-	denomTrace, err := ibc.GetDenomTrace(p.transferKeeper, ctx, denom)
+	denomTrace, err := ibc.GetDenomTrace(e.TransferKeeper, ctx, denom)
 	if err != nil {
 		// FIXME: return 'not supported' (same error as when you call the method on an ERC20.sol)
 		return "", err

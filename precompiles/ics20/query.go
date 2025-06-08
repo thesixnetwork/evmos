@@ -28,7 +28,7 @@ const (
 )
 
 // DenomTrace returns the requested denomination trace information.
-func (p Precompile) DenomTrace(
+func (e *ICS20Executor) DenomTrace(
 	ctx sdk.Context,
 	_ common.Address,
 	method *abi.Method,
@@ -39,7 +39,7 @@ func (p Precompile) DenomTrace(
 		return nil, err
 	}
 
-	res, err := p.transferKeeper.DenomTrace(ctx, req)
+	res, err := e.transferKeeper.DenomTrace(ctx, req)
 	if err != nil {
 		// if the trace does not exist, return empty array
 		if strings.Contains(err.Error(), ErrTraceNotFound) {
@@ -51,8 +51,8 @@ func (p Precompile) DenomTrace(
 	return method.Outputs.Pack(*res.DenomTrace)
 }
 
-// DenomTraces returns the requested denomination traces information.
-func (p Precompile) DenomTraces(
+// DenomTraces returns all the denomination traces in paginated form.
+func (e *ICS20Executor) DenomTraces(
 	ctx sdk.Context,
 	_ common.Address,
 	method *abi.Method,
@@ -63,16 +63,27 @@ func (p Precompile) DenomTraces(
 		return nil, err
 	}
 
-	res, err := p.transferKeeper.DenomTraces(ctx, req)
+	// TODO: Make sure req.Pagination is not nil
+	req.Pagination.Reverse = true
+	res, err := e.transferKeeper.DenomTraces(ctx, req)
 	if err != nil {
 		return nil, err
 	}
 
-	return method.Outputs.Pack(res.DenomTraces, res.Pagination)
+	traces := make([]transfertypes.DenomTrace, len(res.DenomTraces))
+	copy(traces, res.DenomTraces)
+
+	// NOTE: We have to change the keys because solidity doesn't support tuples
+	outputValues, err := method.Outputs.Pack(traces)
+	if err != nil {
+		return nil, err
+	}
+
+	return outputValues, nil
 }
 
 // DenomHash returns the denom hash (in hex format) of the denomination trace information.
-func (p Precompile) DenomHash(
+func (e *ICS20Executor) DenomHash(
 	ctx sdk.Context,
 	_ common.Address,
 	method *abi.Method,
@@ -83,7 +94,7 @@ func (p Precompile) DenomHash(
 		return nil, err
 	}
 
-	res, err := p.transferKeeper.DenomHash(ctx, req)
+	res, err := e.transferKeeper.DenomHash(ctx, req)
 	if err != nil {
 		// if the denom hash does not exist, return empty string
 		if strings.Contains(err.Error(), ErrTraceNotFound) {
@@ -95,9 +106,8 @@ func (p Precompile) DenomHash(
 	return method.Outputs.Pack(res.Hash)
 }
 
-// Allowance returns the remaining allowance of for a combination of grantee - granter.
-// The grantee is the smart contract that was authorized by the granter to spend.
-func (p Precompile) Allowance(
+// Allowance returns the amount of tokens that the spender is allowed to transfer on behalf of the owner.
+func (e *ICS20Executor) Allowance(
 	ctx sdk.Context,
 	method *abi.Method,
 	args []interface{},
@@ -111,7 +121,7 @@ func (p Precompile) Allowance(
 		return nil, err
 	}
 
-	msgAuthz, _ := p.AuthzKeeper.GetAuthorization(ctx, grantee.Bytes(), granter.Bytes(), msg)
+	msgAuthz, _ := e.authzKeeper.GetAuthorization(ctx, grantee.Bytes(), granter.Bytes(), msg)
 
 	if msgAuthz == nil {
 		// return empty array

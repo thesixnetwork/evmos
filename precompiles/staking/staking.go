@@ -5,7 +5,9 @@ package staking
 
 import (
 	"embed"
+	"fmt"
 	"math/big"
+	"time"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
@@ -23,21 +25,33 @@ import (
 )
 
 var _ vm.PrecompiledContract = &Precompile{}
+var _ cmn.Executor = &StakingExecutor{}
+
+// Precompile defines the precompiled contract for staking.
+type Precompile struct {
+	*cmn.Precompile
+}
+
+// StakingExecutor is the implementation of the staking executor contract logic.
+type StakingExecutor struct {
+	stakingKeeper    stakingkeeper.Keeper
+	authzKeeper      authzkeeper.Keeper
+	expiration       time.Duration
+	kvGasConfig      storetypes.GasConfig
+	transientGasConf storetypes.GasConfig
+
+	precompile *Precompile
+	address    common.Address
+}
 
 // Embed abi json file to the executable binary. Needed when importing as dependency.
 //
 //go:embed abi.json
 var f embed.FS
 
-// Precompile defines the precompiled contract for staking.
-type Precompile struct {
-	cmn.Precompile
-	stakingKeeper stakingkeeper.Keeper
-}
-
 // LoadABI loads the staking ABI from the embedded abi.json file
 // for the staking precompile.
-func LoadABI() (abi.ABI, error) {
+func GetABI() (abi.ABI, error) {
 	return cmn.LoadABI(f, "abi.json")
 }
 
@@ -47,131 +61,112 @@ func NewPrecompile(
 	stakingKeeper stakingkeeper.Keeper,
 	authzKeeper authzkeeper.Keeper,
 ) (*Precompile, error) {
-	abi, err := LoadABI()
+	abi, err := GetABI()
 	if err != nil {
 		return nil, err
 	}
 
-	p := &Precompile{
-		Precompile: cmn.Precompile{
-			ABI:                  abi,
-			AuthzKeeper:          authzKeeper,
-			KvGasConfig:          storetypes.KVGasConfig(),
-			TransientKVGasConfig: storetypes.TransientGasConfig(),
-			ApprovalExpiration:   cmn.DefaultExpirationDuration, // should be configurable in the future.
-		},
-		stakingKeeper: stakingKeeper,
+	precompile := &Precompile{}
+	executor := &StakingExecutor{
+		stakingKeeper:    stakingKeeper,
+		authzKeeper:      authzKeeper,
+		address:          common.HexToAddress(evmtypes.StakingPrecompileAddress),
+		expiration:       cmn.DefaultExpirationDuration,
+		kvGasConfig:      storetypes.KVGasConfig(),
+		transientGasConf: storetypes.TransientGasConfig(),
+		precompile:       precompile,
 	}
-	// SetAddress defines the address of the staking precompiled contract.
-	p.SetAddress(common.HexToAddress(evmtypes.StakingPrecompileAddress))
 
-	return p, nil
+	precompile.Precompile = cmn.NewPrecompile(abi, executor, executor.address, "staking")
+	return precompile, nil
 }
 
-// RequiredGas returns the required bare minimum gas to execute the precompile.
-func (p Precompile) RequiredGas(input []byte) uint64 {
-	// NOTE: This check avoid panicking when trying to decode the method ID
-	if len(input) < 4 {
-		return 0
+// NewStakingExecutor creates a new instance of the StakingExecutor.
+func NewStakingExecutor(
+	stakingKeeper stakingkeeper.Keeper,
+	authzKeeper authzkeeper.Keeper,
+) *StakingExecutor {
+	return &StakingExecutor{
+		stakingKeeper:    stakingKeeper,
+		authzKeeper:      authzKeeper,
+		address:          common.HexToAddress(evmtypes.StakingPrecompileAddress),
+		expiration:       cmn.DefaultExpirationDuration,
+		kvGasConfig:      storetypes.KVGasConfig(),
+		transientGasConf: storetypes.TransientGasConfig(),
 	}
-
-	methodID := input[:4]
-
-	method, err := p.MethodById(methodID)
-	if err != nil {
-		// This should never happen since this method is going to fail during Run
-		return 0
-	}
-
-	return cmn.DefaultGasCost(input, p.IsTransaction(method.Name))
 }
 
-// Run executes the precompiled contract staking methods defined in the ABI.
-func (p Precompile) Run(evm *vm.EVM, caller common.Address, callingContract common.Address, input []byte, value *big.Int, readOnly bool) (bz []byte, err error) {
-	ctx, method, args, err := p.Prepare(evm, input, value, readOnly)
-	if err != nil {
-		return nil, err
-	}
+// RequiredGas returns the required gas for contract execution
+func (e *StakingExecutor) RequiredGas(input []byte, method *abi.Method) uint64 {
+	return cmn.DefaultGasCost(input, e.IsTransaction(method.Name))
+}
 
+// Execute implements the Executor interface
+func (e *StakingExecutor) Execute(
+	ctx sdk.Context,
+	method *abi.Method,
+	caller common.Address,
+	callingContract common.Address,
+	args []interface{},
+	value *big.Int,
+	readOnly bool,
+	evm *vm.EVM,
+) ([]byte, error) {
 	stateDB, ok := evm.StateDB.(*statedb.StateDB)
 	if !ok {
-		return nil, vm.ErrOutOfGas
+		return nil, fmt.Errorf("invalid StateDB type")
 	}
 
-	initialGas := ctx.GasMeter().GasConsumed()
-	// This handles any out of gas errors that may occur during the execution of a precompile tx or query.
-	// It avoids panics and returns the out of gas error so the EVM can continue gracefully.
-	defer cmn.HandleGasError(ctx, p.RequiredGas(input), initialGas, &err)()
+	if readOnly && e.IsTransaction(method.Name) {
+		return nil, fmt.Errorf("cannot call non-view method in read-only mode")
+	}
 
 	switch method.Name {
-	// Authorization transactions
+	// Authorization methods
 	case authorization.ApproveMethod:
-		bz, err = p.Approve(ctx, evm.Origin, stateDB, method, args)
+		return e.Approve(ctx, evm.Origin, stateDB, method, args)
 	case authorization.RevokeMethod:
-		bz, err = p.Revoke(ctx, evm.Origin, stateDB, method, args)
+		return e.Revoke(ctx, evm.Origin, stateDB, method, args)
 	case authorization.IncreaseAllowanceMethod:
-		bz, err = p.IncreaseAllowance(ctx, evm.Origin, stateDB, method, args)
+		return e.IncreaseAllowance(ctx, evm.Origin, stateDB, method, args)
 	case authorization.DecreaseAllowanceMethod:
-		bz, err = p.DecreaseAllowance(ctx, evm.Origin, stateDB, method, args)
-	// Staking transactions
+		return e.DecreaseAllowance(ctx, evm.Origin, stateDB, method, args)
+		// Staking transactions
 	case CreateValidatorMethod:
-		bz, err = p.CreateValidator(ctx, evm.Origin, caller, stateDB, method, args)
+		return e.CreateValidator(ctx, evm.Origin, caller, stateDB, method, args)
 	case EditValidatorMethod:
-		bz, err = p.EditValidator(ctx, evm.Origin, caller, stateDB, method, args)
+		return e.EditValidator(ctx, evm.Origin, caller, stateDB, method, args)
+	// Transactions
 	case DelegateMethod:
-		bz, err = p.Delegate(ctx, evm.Origin, caller, stateDB, method, args)
+		return e.Delegate(ctx, evm.Origin, caller, stateDB, method, args)
 	case UndelegateMethod:
-		bz, err = p.Undelegate(ctx, evm.Origin, caller, stateDB, method, args)
+		return e.Undelegate(ctx, evm.Origin, caller, stateDB, method, args)
 	case RedelegateMethod:
-		bz, err = p.Redelegate(ctx, evm.Origin, caller, stateDB, method, args)
+		return e.Redelegate(ctx, evm.Origin, caller, stateDB, method, args)
 	case CancelUnbondingDelegationMethod:
-		bz, err = p.CancelUnbondingDelegation(ctx, evm.Origin, caller, stateDB, method, args)
-	// Staking queries
+		return e.CancelUnbondingDelegation(ctx, evm.Origin, caller, stateDB, method, args)
 	case DelegationMethod:
-		bz, err = p.Delegation(ctx, caller, method, args)
+		return e.Delegation(ctx, evm.Origin, method, args)
 	case UnbondingDelegationMethod:
-		bz, err = p.UnbondingDelegation(ctx, caller, method, args)
+		return e.UnbondingDelegation(ctx, caller, method, args)
 	case ValidatorMethod:
-		bz, err = p.Validator(ctx, method, caller, args)
+		return e.Validator(ctx, method, caller, args)
 	case ValidatorsMethod:
-		bz, err = p.Validators(ctx, method, caller, args)
+		return e.Validators(ctx, method, caller, args)
 	case RedelegationMethod:
-		bz, err = p.Redelegation(ctx, method, caller, args)
+		return e.Redelegation(ctx, method, caller, args)
 	case RedelegationsMethod:
-		bz, err = p.Redelegations(ctx, method, caller, args)
-	// Authorization queries
+		return e.Redelegations(ctx, method, caller, args)
 	case authorization.AllowanceMethod:
-		bz, err = p.Allowance(ctx, method, caller, args)
+		return e.Allowance(ctx, method, caller, args)
+	default:
+		return nil, fmt.Errorf(cmn.ErrUnknownMethod, method.Name)
 	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	if err := p.AddJournalEntries(stateDB, ctx); err != nil {
-		return nil, err
-	}
-
-	return bz, nil
 }
 
-// IsTransaction checks if the given method name corresponds to a transaction or query.
-//
-// Available staking transactions are:
-//   - CreateValidator
-//   - EditValidator
-//   - Delegate
-//   - Undelegate
-//   - Redelegate
-//   - CancelUnbondingDelegation
-//
-// Available authorization transactions are:
-//   - Approve
-//   - Revoke
-//   - IncreaseAllowance
-//   - DecreaseAllowance
-func (Precompile) IsTransaction(method string) bool {
-	switch method {
+// IsTransaction checks if the method is a transaction or not, depending on its name
+func (e *StakingExecutor) IsTransaction(methodName string) bool {
+	switch methodName {
 	case CreateValidatorMethod,
 		EditValidatorMethod,
 		DelegateMethod,
@@ -188,7 +183,21 @@ func (Precompile) IsTransaction(method string) bool {
 	}
 }
 
+// Address implements the Executor interface.
+func (e *StakingExecutor) Address() common.Address {
+	return e.address
+}
+
+func (e *StakingExecutor) GetABI() abi.ABI {
+	// All methods are queries for this precompile
+	abi, err := GetABI()
+	if err != nil {
+		panic(err)
+	}
+	return abi
+}
+
 // Logger returns a precompile-specific logger.
-func (p Precompile) Logger(ctx sdk.Context) log.Logger {
+func (p StakingExecutor) Logger(ctx sdk.Context) log.Logger {
 	return ctx.Logger().With("evm extension", "staking")
 }

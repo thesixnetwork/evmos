@@ -82,7 +82,7 @@ func (s *PrecompileTestSuite) TestIsTransaction() {
 
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
-			s.Require().Equal(s.precompile.IsTransaction(tc.method), tc.isTx)
+			s.Require().Equal(s.executor.IsTransaction(tc.method), tc.isTx)
 		})
 	}
 }

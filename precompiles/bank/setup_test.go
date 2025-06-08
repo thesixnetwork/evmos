@@ -35,8 +35,8 @@ type PrecompileTestSuite struct {
 	grpcHandler grpc.Handler
 	keyring     testkeyring.Keyring
 
-	executor     *bank.BankExecutor
-	precompile   *cmn.Precompile
+	executor   *bank.BankExecutor
+	precompile *bank.Precompile
 }
 
 func TestPrecompileTestSuite(t *testing.T) {
@@ -89,5 +89,7 @@ func (s *PrecompileTestSuite) SetupTest() sdk.Context {
 
 	s.executor = s.setupBankExecutor()
 	s.precompile = s.setupBankPrecompile()
+
+	s.precompile.Precompile = cmn.NewPrecompile(s.executor.GetABI(), s.executor, s.executor.Address(), "bank")
 	return ctx
 }

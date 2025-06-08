@@ -29,7 +29,7 @@ type PrecompileTestSuite struct {
 	validatorsKeys       []testkeyring.Key
 	withValidatorSlashes bool
 
-	precompile *cmn.Precompile
+	precompile *distribution.Precompile
 	executor   *distribution.DistributionExecutor
 }
 
@@ -101,4 +101,6 @@ func (s *PrecompileTestSuite) SetupTest() {
 		s.network.App.StakingKeeper,
 		s.network.App.AuthzKeeper,
 	)
+
+	s.precompile.Precompile = cmn.NewPrecompile(s.executor.GetABI(), s.executor, s.executor.Address(), "dist")
 }

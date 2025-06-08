@@ -31,7 +31,7 @@ const (
 )
 
 // CreateClawbackVestingAccount creates a new clawback vesting account
-func (p *Precompile) CreateClawbackVestingAccount(
+func (p *VestingExecutor) CreateClawbackVestingAccount(
 	ctx sdk.Context,
 	origin common.Address,
 	stateDB vm.StateDB,
@@ -68,7 +68,7 @@ func (p *Precompile) CreateClawbackVestingAccount(
 }
 
 // FundVestingAccount funds a vesting account by creating vesting schedules
-func (p *Precompile) FundVestingAccount(
+func (p *VestingExecutor) FundVestingAccount(
 	ctx sdk.Context,
 	caller common.Address,
 	origin common.Address,
@@ -105,7 +105,7 @@ func (p *Precompile) FundVestingAccount(
 	if isContractCaller && !isContractFunder {
 		// if calling from a contract and the contract is not the funder (origin == funderAddr)
 		// check that an authorization exists
-		_, _, err := authorization.CheckAuthzExists(ctx, p.AuthzKeeper, caller, funderAddr, FundVestingAccountMsgURL)
+		_, _, err := authorization.CheckAuthzExists(ctx, p.authzKeeper, caller, funderAddr, FundVestingAccountMsgURL)
 		if err != nil {
 			return nil, fmt.Errorf(authorization.ErrAuthzDoesNotExistOrExpired, FundVestingAccountMsgURL, caller)
 		}
@@ -125,7 +125,7 @@ func (p *Precompile) FundVestingAccount(
 
 		// NOTE: This ensures that the changes in the bank keeper are correctly mirrored to the EVM stateDB.
 		amt := vestingCoins.AmountOf(utils.BaseDenom).BigInt()
-		p.SetBalanceChangeEntries(
+		p.precompile.SetBalanceChangeEntries(
 			cmn.NewBalanceChangeEntry(funderAddr, amt, cmn.Sub),
 			cmn.NewBalanceChangeEntry(vestingAddr, amt, cmn.Add),
 		)
@@ -139,7 +139,7 @@ func (p *Precompile) FundVestingAccount(
 }
 
 // Clawback clawbacks tokens from a clawback vesting account
-func (p *Precompile) Clawback(
+func (p *VestingExecutor) Clawback(
 	ctx sdk.Context,
 	caller common.Address,
 	origin common.Address,
@@ -177,7 +177,7 @@ func (p *Precompile) Clawback(
 	if isContractCaller && !isContractFunder {
 		// if calling from a contract and the contract is not the funder (origin == funderAddr)
 		// check that an authorization exists.
-		_, _, err := authorization.CheckAuthzExists(ctx, p.AuthzKeeper, caller, funderAddr, ClawbackMsgURL)
+		_, _, err := authorization.CheckAuthzExists(ctx, p.authzKeeper, caller, funderAddr, ClawbackMsgURL)
 		if err != nil {
 			return nil, fmt.Errorf(authorization.ErrAuthzDoesNotExistOrExpired, ClawbackMsgURL, caller)
 		}
@@ -190,9 +190,9 @@ func (p *Precompile) Clawback(
 
 	if isContractCaller {
 		// NOTE: This ensures that the changes in the bank keeper are correctly mirrored to the EVM stateDB when calling
-		// the precompile from another contract.
+		// the VestingExecutor from another contract.
 		clawbackAmt := response.Coins.AmountOf(utils.BaseDenom).BigInt()
-		p.SetBalanceChangeEntries(
+		p.precompile.SetBalanceChangeEntries(
 			cmn.NewBalanceChangeEntry(accountAddr, clawbackAmt, cmn.Sub),
 			cmn.NewBalanceChangeEntry(destAddr, clawbackAmt, cmn.Add),
 		)
@@ -208,7 +208,7 @@ func (p *Precompile) Clawback(
 }
 
 // UpdateVestingFunder updates the vesting funder of a clawback vesting account
-func (p *Precompile) UpdateVestingFunder(
+func (p *VestingExecutor) UpdateVestingFunder(
 	ctx sdk.Context,
 	caller common.Address,
 	origin common.Address,
@@ -244,7 +244,7 @@ func (p *Precompile) UpdateVestingFunder(
 	if isContractCall && !isContractFunder {
 		// if calling from a contract and the contract is not the funder (origin == funderAddr)
 		// check that an authorization exists
-		_, _, err := authorization.CheckAuthzExists(ctx, p.AuthzKeeper, caller, funderAddr, UpdateVestingFunderMsgURL)
+		_, _, err := authorization.CheckAuthzExists(ctx, p.authzKeeper, caller, funderAddr, UpdateVestingFunderMsgURL)
 		if err != nil {
 			return nil, fmt.Errorf(authorization.ErrAuthzDoesNotExistOrExpired, UpdateVestingFunderMsgURL, caller)
 		}
@@ -263,7 +263,7 @@ func (p *Precompile) UpdateVestingFunder(
 }
 
 // ConvertVestingAccount converts a clawback vesting account to a base account once the vesting period is over.
-func (p *Precompile) ConvertVestingAccount(
+func (p *VestingExecutor) ConvertVestingAccount(
 	ctx sdk.Context,
 	stateDB vm.StateDB,
 	method *abi.Method,

@@ -7,10 +7,13 @@ import (
 	"embed"
 	"fmt"
 	"math/big"
+	"time"
 
 	storetypes "cosmossdk.io/store/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	authzkeeper "github.com/cosmos/cosmos-sdk/x/authz/keeper"
 	channelkeeper "github.com/cosmos/ibc-go/v8/modules/core/04-channel/keeper"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/evmos/evmos/v20/precompiles/authorization"
 	cmn "github.com/evmos/evmos/v20/precompiles/common"
@@ -25,122 +28,137 @@ import (
 const PrecompileAddress = "0x0000000000000000000000000000000000000802"
 
 var _ vm.PrecompiledContract = &Precompile{}
+var _ cmn.Executor = &ICS20Executor{}
 
-// Embed abi json file to the executable binary. Needed when importing as dependency.
-//
 //go:embed abi.json
 var f embed.FS
 
-type Precompile struct {
-	cmn.Precompile
-	stakingKeeper  stakingkeeper.Keeper
-	transferKeeper transferkeeper.Keeper
-	channelKeeper  channelkeeper.Keeper
+// GetABI returns the ABI definition of the ERC20 precompile contract
+func GetABI() (abi.ABI, error) {
+	return cmn.LoadABI(f, "abi.json")
 }
 
-// NewPrecompile creates a new ICS-20 Precompile instance as a
-// PrecompiledContract interface.
+type Precompile struct {
+	*cmn.Precompile
+}
+
+// ICS20Executor is the implementation of the Executor interface for ICS20 precompile.
+type ICS20Executor struct {
+	stakingKeeper    stakingkeeper.Keeper
+	transferKeeper   transferkeeper.Keeper
+	channelKeeper    channelkeeper.Keeper
+	authzKeeper      authzkeeper.Keeper
+	expiration       time.Duration
+	kvGasConfig      storetypes.GasConfig
+	transientGasConf storetypes.GasConfig
+
+	precompile *Precompile
+	address    common.Address
+}
+
+// NewPrecompile creates a new ICS-20 Precompile instance.
 func NewPrecompile(
 	stakingKeeper stakingkeeper.Keeper,
 	transferKeeper transferkeeper.Keeper,
 	channelKeeper channelkeeper.Keeper,
 	authzKeeper authzkeeper.Keeper,
 ) (*Precompile, error) {
-	newAbi, err := cmn.LoadABI(f, "abi.json")
+	abi, err := GetABI()
 	if err != nil {
 		return nil, err
 	}
 
-	p := &Precompile{
-		Precompile: cmn.Precompile{
-			ABI:                  newAbi,
-			AuthzKeeper:          authzKeeper,
-			KvGasConfig:          storetypes.KVGasConfig(),
-			TransientKVGasConfig: storetypes.TransientGasConfig(),
-			ApprovalExpiration:   cmn.DefaultExpirationDuration, // should be configurable in the future.
-		},
-		transferKeeper: transferKeeper,
-		channelKeeper:  channelKeeper,
-		stakingKeeper:  stakingKeeper,
+	precompile := &Precompile{}
+	executor := &ICS20Executor{
+		stakingKeeper:    stakingKeeper,
+		transferKeeper:   transferKeeper,
+		channelKeeper:    channelKeeper,
+		authzKeeper:      authzKeeper,
+		address:          common.HexToAddress(evmtypes.ICS20PrecompileAddress),
+		expiration:       cmn.DefaultExpirationDuration,
+		kvGasConfig:      storetypes.KVGasConfig(),
+		transientGasConf: storetypes.TransientGasConfig(),
+		precompile:       precompile,
 	}
 
-	// SetAddress defines the address of the ICS-20 compile contract.
-	p.SetAddress(common.HexToAddress(evmtypes.ICS20PrecompileAddress))
+	precompile.Precompile = cmn.NewPrecompile(abi, executor, executor.address, "ics20")
+	return precompile, nil
+}
 
-	return p, nil
+// NewICS20Executor creates a new ICS20Executor instance.
+func NewICS20Executor(
+	stakingKeeper stakingkeeper.Keeper,
+	transferKeeper transferkeeper.Keeper,
+	channelKeeper channelkeeper.Keeper,
+	authzKeeper authzkeeper.Keeper,
+) *ICS20Executor {
+	return &ICS20Executor{
+		stakingKeeper:    stakingKeeper,
+		transferKeeper:   transferKeeper,
+		channelKeeper:    channelKeeper,
+		authzKeeper:      authzKeeper,
+		address:          common.HexToAddress(evmtypes.ICS20PrecompileAddress),
+		expiration:       cmn.DefaultExpirationDuration,
+		kvGasConfig:      storetypes.KVGasConfig(),
+		transientGasConf: storetypes.TransientGasConfig(),
+	}
+}
+
+// Address returns the address of the ICS20 contract.
+func (e *ICS20Executor) Address() common.Address {
+	return e.address
 }
 
 // RequiredGas calculates the precompiled contract's base gas rate.
-func (p Precompile) RequiredGas(input []byte) uint64 {
-	// NOTE: This check avoid panicking when trying to decode the method ID
-	if len(input) < 4 {
-		return 0
-	}
-
-	methodID := input[:4]
-
-	method, err := p.MethodById(methodID)
-	if err != nil {
-		// This should never happen since this method is going to fail during Run
-		return 0
-	}
-
-	return cmn.DefaultGasCost(input, p.IsTransaction(method.Name))
+func (e *ICS20Executor) RequiredGas(input []byte, method *abi.Method) uint64 {
+	return cmn.DefaultGasCost(input, e.IsTransaction(method.Name))
 }
 
-// Run executes the precompiled contract IBC transfer methods defined in the ABI.
-func (p Precompile) Run(evm *vm.EVM, caller common.Address, callingContract common.Address, input []byte, value *big.Int, readOnly bool) (bz []byte, err error) {
-	ctx, method, args, err := p.Prepare(evm, input, value, readOnly)
-	if err != nil {
-		return nil, err
-	}
-
+// Execute runs the precompiled contract ICS20 methods according to the ABI.
+func (e *ICS20Executor) Execute(
+	ctx sdk.Context,
+	method *abi.Method,
+	caller common.Address,
+	callingContract common.Address,
+	args []interface{},
+	value *big.Int,
+	readOnly bool,
+	evm *vm.EVM,
+) ([]byte, error) {
 	stateDB, ok := evm.StateDB.(*statedb.StateDB)
 	if !ok {
-		return nil, vm.ErrOutOfGas
+		return nil, fmt.Errorf("invalid StateDB type")
 	}
 
-	initialGas := ctx.GasMeter().GasConsumed()
-	// This handles any out of gas errors that may occur during the execution of a precompile tx or query.
-	// It avoids panics and returns the out of gas error so the EVM can continue gracefully.
-	defer cmn.HandleGasError(ctx, p.RequiredGas(input), initialGas, &err)()
+	if readOnly && e.IsTransaction(method.Name) {
+		return nil, fmt.Errorf("cannot call non-view method in read-only mode")
+	}
 
 	switch method.Name {
-	// TODO Approval transactions => need cosmos-sdk v0.46 & ibc-go v6.2.0
 	// Authorization Methods:
 	case authorization.ApproveMethod:
-		bz, err = p.Approve(ctx, evm.Origin, stateDB, method, args)
+		return e.Approve(ctx, evm.Origin, stateDB, method, args)
 	case authorization.RevokeMethod:
-		bz, err = p.Revoke(ctx, evm.Origin, stateDB, method, args)
+		return e.Revoke(ctx, evm.Origin, stateDB, method, args)
 	case authorization.IncreaseAllowanceMethod:
-		bz, err = p.IncreaseAllowance(ctx, evm.Origin, stateDB, method, args)
+		return e.IncreaseAllowance(ctx, evm.Origin, stateDB, method, args)
 	case authorization.DecreaseAllowanceMethod:
-		bz, err = p.DecreaseAllowance(ctx, evm.Origin, stateDB, method, args)
+		return e.DecreaseAllowance(ctx, evm.Origin, stateDB, method, args)
 	// ICS20 transactions
 	case TransferMethod:
-		bz, err = p.Transfer(ctx, evm.Origin, caller, stateDB, method, args)
+		return e.Transfer(ctx, evm.Origin, caller, stateDB, method, args)
 	// ICS20 queries
 	case DenomTraceMethod:
-		bz, err = p.DenomTrace(ctx, caller, method, args)
+		return e.DenomTrace(ctx, caller, method, args)
 	case DenomTracesMethod:
-		bz, err = p.DenomTraces(ctx, caller, method, args)
+		return e.DenomTraces(ctx, caller, method, args)
 	case DenomHashMethod:
-		bz, err = p.DenomHash(ctx, caller, method, args)
+		return e.DenomHash(ctx, caller, method, args)
 	case authorization.AllowanceMethod:
-		bz, err = p.Allowance(ctx, method, args)
+		return e.Allowance(ctx, method, args)
 	default:
 		return nil, fmt.Errorf(cmn.ErrUnknownMethod, method.Name)
 	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	if err := p.AddJournalEntries(stateDB, ctx); err != nil {
-		return nil, err
-	}
-
-	return bz, nil
 }
 
 // IsTransaction checks if the given method name corresponds to a transaction or query.
@@ -153,7 +171,7 @@ func (p Precompile) Run(evm *vm.EVM, caller common.Address, callingContract comm
 //   - Revoke
 //   - IncreaseAllowance
 //   - DecreaseAllowance
-func (Precompile) IsTransaction(method string) bool {
+func (e *ICS20Executor) IsTransaction(method string) bool {
 	switch method {
 	case TransferMethod,
 		authorization.ApproveMethod,
@@ -164,4 +182,13 @@ func (Precompile) IsTransaction(method string) bool {
 	default:
 		return false
 	}
+}
+
+func (e *ICS20Executor) GetABI() abi.ABI {
+	// All methods are queries for this precompile
+	abi, err := GetABI()
+	if err != nil {
+		panic(err)
+	}
+	return abi
 }
