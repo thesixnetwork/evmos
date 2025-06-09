@@ -41,18 +41,18 @@ func GetABI() (abi.ABI, error) {
 // NewPrecompile creates a new bech32 Precompile instance as a
 // PrecompiledContract interface.
 func NewPrecompile(baseFee uint64) (*Precompile, error) {
-	abi, err := cmn.LoadABI(f, "abi.json")
+	abi, err := GetABI()
 	if err != nil {
 		return nil, err
 	}
 
 	precompile := &Precompile{}
 	executor := &Bech32Executor{
-		address:    common.HexToAddress(evmtypes.BankPrecompileAddress),
+		address:    common.HexToAddress(evmtypes.Bech32PrecompileAddress),
 		precompile: precompile,
 		baseGas:    baseFee,
 	}
-	precompile.Precompile = cmn.NewPrecompile(abi, executor, executor.address, "bank")
+	precompile.Precompile = cmn.NewPrecompile(abi, executor, executor.address, "bec32")
 	return precompile, nil
 }
 
