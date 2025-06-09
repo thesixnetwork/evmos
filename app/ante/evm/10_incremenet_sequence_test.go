@@ -3,12 +3,17 @@
 package evm_test
 
 import (
+	"math/big"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/evmos/evmos/v20/app/ante/evm"
+	testutil "github.com/evmos/evmos/v20/testutil"
 	"github.com/evmos/evmos/v20/testutil/integration/evmos/grpc"
 	testkeyring "github.com/evmos/evmos/v20/testutil/integration/evmos/keyring"
 	"github.com/evmos/evmos/v20/testutil/integration/evmos/network"
+	evmtypes "github.com/evmos/evmos/v20/x/evm/types"
 )
 
 func (suite *EvmAnteTestSuite) TestIncrementSequence() {
@@ -46,16 +51,35 @@ func (suite *EvmAnteTestSuite) TestIncrementSequence() {
 			suite.Require().NoError(err)
 			preSequence := account.GetSequence()
 
-			// nonce := tc.malleate(account)
+			nonce := tc.malleate(account)
+
+			// Create mock Ethereum transaction with the nonce
+			evmTxArgs := evmtypes.EvmTxArgs{
+				ChainID:  big.NewInt(1),
+				Nonce:    nonce,
+				To:       &common.Address{},
+				Amount:   big.NewInt(0),
+				GasLimit: 100000,
+				GasPrice: big.NewInt(1),
+				Input:    []byte{},
+			}
+
+			// Create mock MsgEthereumTx
+			msgEthereumTx := evmtypes.NewTx(&evmTxArgs)
+			msgEthereumTx.From = accAddr.String()
+
+			// Create mock Tx containing the MsgEthereumTx
+			mockTx := &testutil.MockTx{
+				Msgs: []sdk.Msg{msgEthereumTx},
+			}
 
 			// Function under test
 			err = evm.IncrementNonce(
 				unitNetwork.GetContext(),
 				unitNetwork.App.AccountKeeper,
 				account,
-				// TODO: Mock Tx
-				nil,
-				true,
+				mockTx,
+				tc.expectedError == nil, // If no error expected, use true (safe ordering), otherwise false
 			)
 
 			if tc.expectedError != nil {
