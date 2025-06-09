@@ -45,20 +45,23 @@ func NewPrecompile(baseFee uint64) (*Precompile, error) {
 	if err != nil {
 		return nil, err
 	}
+	if baseFee == 0 {
+		return nil, fmt.Errorf("baseGas cannot be zero")
+	}
 
 	precompile := &Precompile{}
 	executor := &Bech32Executor{
 		address:    common.HexToAddress(evmtypes.Bech32PrecompileAddress),
-		precompile: precompile,
 		baseGas:    baseFee,
+		precompile: precompile,
 	}
-	precompile.Precompile = cmn.NewPrecompile(abi, executor, executor.address, "bec32")
+	precompile.Precompile = cmn.NewPrecompile(abi, executor, executor.address, "bech32")
 	return precompile, nil
 }
 
-func NewBankExecutor(baseFee uint64) *Bech32Executor {
+func NewBech32Executor(baseFee uint64) *Bech32Executor {
 	return &Bech32Executor{
-		address: common.HexToAddress(evmtypes.BankPrecompileAddress),
+		address: common.HexToAddress(evmtypes.Bech32PrecompileAddress),
 		baseGas: baseFee,
 	}
 }
@@ -66,7 +69,6 @@ func NewBankExecutor(baseFee uint64) *Bech32Executor {
 // RequiredGas calculates the contract gas use.
 func (e *Bech32Executor) RequiredGas(input []byte, _ *abi.Method) uint64 {
 	return e.baseGas
-	// return cmn.DefaultGasCost(input, false)
 }
 
 func (e *Bech32Executor) Execute(

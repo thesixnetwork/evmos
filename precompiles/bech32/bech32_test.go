@@ -5,9 +5,13 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/evmos/evmos/v20/app"
 	"github.com/evmos/evmos/v20/cmd/config"
 	"github.com/evmos/evmos/v20/precompiles/bech32"
 	"github.com/evmos/evmos/v20/x/evm/core/vm"
+	"github.com/evmos/evmos/v20/x/evm/statedb"
+	evmtypes "github.com/evmos/evmos/v20/x/evm/types"
 )
 
 func (s *PrecompileTestSuite) TestNewPrecompile() {
@@ -39,7 +43,7 @@ func (s *PrecompileTestSuite) TestNewPrecompile() {
 			if tc.expPass {
 				s.Require().NoError(err)
 				s.Require().NotNil(p)
-				s.Require().Equal(tc.baseGas, p.RequiredGas([]byte{}))
+				s.Require().Equal(tc.baseGas, p.RequiredGas(s.precompile.Methods["hexToBech32"].ID))
 			} else {
 				s.Require().Error(err)
 				s.Require().Nil(p)
@@ -255,12 +259,44 @@ func (s *PrecompileTestSuite) TestRun() {
 
 			// malleate testcase
 			contract := tc.malleate()
+			ctx := s.network.GetContext()
+			headerHash := ctx.HeaderHash()
+			stDB := statedb.New(
+				ctx,
+				s.network.App.EvmKeeper,
+				statedb.NewEmptyTxConfig(common.BytesToHash(headerHash)),
+			)
 
-			// Run precompiled contract
+			proposerAddress := ctx.BlockHeader().ProposerAddress
+			cfg, err := s.network.App.EvmKeeper.EVMConfig(ctx, proposerAddress, s.network.App.EvmKeeper.ChainID())
+			s.Require().NoError(err, "failed to instantiate EVM config")
+
+			contractAddr := contract.Address()
+			baseFee := s.network.App.FeeMarketKeeper.GetBaseFee(ctx)
+			// Build and sign Ethereum transaction
+			txArgs := evmtypes.EvmTxArgs{
+				ChainID:   s.network.App.EvmKeeper.ChainID(),
+				Nonce:     0,
+				To:        &contractAddr,
+				Amount:    nil,
+				GasLimit:  100000,
+				GasPrice:  app.MainnetMinGasPrices.BigInt(),
+				GasFeeCap: baseFee,
+				GasTipCap: big.NewInt(1),
+				Accesses:  &ethtypes.AccessList{},
+			}
+
+			msg, err := s.factory.GenerateGethCoreMsg(s.keyring.GetPrivKey(0), txArgs)
+			s.Require().NoError(err)
+
+			// Run precompiled
+			evm := s.network.App.EvmKeeper.NewEVM(
+				ctx, msg, cfg, nil, stDB,
+			)
 
 			// NOTE: we can ignore the EVM and readonly args since it's a stateless
 			// precompiled contract
-			bz, err := s.precompile.Run(nil, contract.CallerAddress, contract.Address(), contract.Input, contract.Value(), true)
+			bz, err := s.precompile.Run(evm, contract.CallerAddress, contract.Address(), contract.Input, contract.Value(), true)
 
 			// Check results
 			if tc.expPass {

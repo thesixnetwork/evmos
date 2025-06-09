@@ -283,7 +283,7 @@ func runPrecompiledContract(
 		return nil, contract.Gas, ErrOutOfGas
 	}
 
-	output, err := p.Run(evm, contract.CallerAddress, contract.Address(), contract.Input, contract.value, readOnly)
+	output, err := p.Run(evm, contract.CallerAddress, contract.Address(), input, value, readOnly)
 	return output, contract.Gas, err
 }
 

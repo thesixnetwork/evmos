@@ -6,6 +6,8 @@ import (
 	"github.com/evmos/evmos/v20/precompiles/bech32"
 	cmn "github.com/evmos/evmos/v20/precompiles/common"
 
+	"github.com/evmos/evmos/v20/testutil/integration/evmos/factory"
+	"github.com/evmos/evmos/v20/testutil/integration/evmos/grpc"
 	testkeyring "github.com/evmos/evmos/v20/testutil/integration/evmos/keyring"
 	"github.com/evmos/evmos/v20/testutil/integration/evmos/network"
 	"github.com/stretchr/testify/suite"
@@ -19,6 +21,7 @@ type PrecompileTestSuite struct {
 	suite.Suite
 
 	network *network.UnitTestNetwork
+	factory factory.TxFactory
 	keyring testkeyring.Keyring
 
 	precompile *bech32.Precompile
@@ -35,13 +38,16 @@ func (s *PrecompileTestSuite) SetupTest() {
 	integrationNetwork := network.NewUnitTestNetwork(
 		network.WithPreFundedAccounts(keyring.GetAllAccAddrs()...),
 	)
+	grpcHandler := grpc.NewIntegrationHandler(integrationNetwork)
+	txFactory := factory.New(integrationNetwork, grpcHandler)
 
 	s.keyring = keyring
 	s.network = integrationNetwork
+	s.factory = txFactory
 
 	precompile, err := bech32.NewPrecompile(6000)
 	s.Require().NoError(err, "failed to create bech32 precompile")
-	executor := bech32.NewBankExecutor(6000)
+	executor := bech32.NewBech32Executor(6000)
 
 	s.precompile = precompile
 	s.executor = executor
