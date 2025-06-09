@@ -21,8 +21,9 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/ethereum/go-ethereum/eth/tracers"
+	
+	"github.com/evmos/evmos/v20/x/evm/core/vm"
+	"github.com/evmos/evmos/v20/x/evm/core/tracers"
 )
 
 func init() {

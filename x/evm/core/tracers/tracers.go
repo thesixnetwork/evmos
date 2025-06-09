@@ -81,7 +81,7 @@ func (d *directory) RegisterJSEval(f jsCtorFn) {
 // or an arbitrary JS code.
 func (d *directory) New(name string, ctx *Context, cfg json.RawMessage) (Tracer, error) {
 
-	fmt.Printf("############# CONTEXT: %v,  NAME: %v, config: %v ##################", ctx, name, cfg)
+
 	if elem, ok := d.elems[name]; ok {
 		return elem.ctor(ctx, cfg)
 	}

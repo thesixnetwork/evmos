@@ -24,9 +24,10 @@ import (
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
+	
+	"github.com/evmos/evmos/v20/x/evm/core/vm"
 )
 
 // Config is a basic type specifying certain configuration flags for running

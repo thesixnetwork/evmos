@@ -31,13 +31,14 @@ import (
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/ethereum/go-ethereum/eth/tracers"
-	"github.com/ethereum/go-ethereum/eth/tracers/logger"
 	"github.com/ethereum/go-ethereum/params"
+	
+	"github.com/evmos/evmos/v20/x/evm/core/tracers/logger"
+	"github.com/evmos/evmos/v20/x/evm/core/tracers"
+	"github.com/evmos/evmos/v20/x/evm/core/vm"
 
 	// force-load js tracers to trigger registration
-	_ "github.com/ethereum/go-ethereum/eth/tracers/js"
+	_ "github.com/evmos/evmos/v20/x/evm/core/tracers/js"
 )
 
 func TestDefaults(t *testing.T) {
