@@ -111,11 +111,11 @@ var _ = Describe("Improvement proposal evmos_0 - ", Ordered, func() {
 
 	It("should enable the new IP", func() {
 		eips.Multiplier = ipMultiplier
-		newIP := 0
+		newIP := int32(0)
 
 		qRes, err := gh.GetEvmParams()
 		Expect(err).To(BeNil(), "failed during query to evm params")
-		qRes.Params.ExtraEIPs = append(qRes.Params.ExtraEIPs, int32(newIP))
+		qRes.Params.ExtraEIPs = append(qRes.Params.ExtraEIPs, newIP)
 		err = integrationutils.UpdateEvmParams(
 			integrationutils.UpdateParamsInput{
 				Tf:      tf,
@@ -259,11 +259,11 @@ var _ = Describe("Improvement proposal evmos_1 - ", Ordered, func() {
 	})
 	It("should enable the new IP", func() {
 		eips.Multiplier = eipMultiplier
-		newIP := 1
+		newIP := int32(1)
 
 		qRes, err := gh.GetEvmParams()
 		Expect(err).To(BeNil(), "failed during query to evm params")
-		qRes.Params.ExtraEIPs = append(qRes.Params.ExtraEIPs, int32(newIP))
+		qRes.Params.ExtraEIPs = append(qRes.Params.ExtraEIPs, newIP)
 
 		err = integrationutils.UpdateEvmParams(
 			integrationutils.UpdateParamsInput{
@@ -401,11 +401,11 @@ var _ = Describe("Improvement proposal evmos_2 - ", Ordered, func() {
 
 	It("should enable the new IP", func() {
 		eips.SstoreConstantGas = constantGas
-		newIP := 2
+		newIP := int32(2)
 
 		qRes, err := gh.GetEvmParams()
 		Expect(err).To(BeNil(), "failed during query to evm params")
-		qRes.Params.ExtraEIPs = append(qRes.Params.ExtraEIPs, int32(newIP))
+		qRes.Params.ExtraEIPs = append(qRes.Params.ExtraEIPs, newIP)
 		err = integrationutils.UpdateEvmParams(
 			integrationutils.UpdateParamsInput{
 				Tf:      tf,
