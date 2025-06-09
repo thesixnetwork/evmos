@@ -27,7 +27,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
-	
+
 	"github.com/evmos/evmos/v20/x/evm/core/vm"
 	"github.com/evmos/evmos/v20/x/evm/core/tracers"
 	jsassets "github.com/evmos/evmos/v20/x/evm/core/tracers/js/internal/tracers"
@@ -342,8 +342,6 @@ func (t *jsTracer) CaptureExit(output []byte, gasUsed uint64, err error) {
 
 // GetResult calls the Javascript 'result' function and returns its value, or any accumulated error
 func (t *jsTracer) GetResult() (json.RawMessage, error) {
-
-	fmt.Println("############## HERE ###############")
 	ctx := t.vm.ToValue(t.ctx)
 	res, err := t.result(t.obj, ctx, t.dbValue)
 	if err != nil {
