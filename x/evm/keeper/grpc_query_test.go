@@ -1313,7 +1313,7 @@ func (suite *KeeperTestSuite) TestTraceBlock() {
 				return nil
 			},
 			expPass:       true,
-			traceResponse: "[{\"error\":\"rpc error: code = Internal desc = tracer not found\"}]",
+			traceResponse: "[{\"error\":\"rpc error: code = Internal desc = ReferenceError: invalid_tracer is not defined at \\u003ceval\\u003e:1:2(0)\"}]",
 		},
 		{
 			msg: "invalid chain id",
