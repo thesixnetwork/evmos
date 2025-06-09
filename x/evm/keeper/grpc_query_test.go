@@ -1326,7 +1326,7 @@ func (suite *KeeperTestSuite) TestTraceBlock() {
 				return nil
 			},
 			expPass:       true,
-			traceResponse: "[{\"error\":\"rpc error: code = Internal desc = invalid chain id for signer\"}]",
+			traceResponse: "[{\"error\":\"invalid chain id for signer: have 9001 want -1\"}]",
 		},
 	}
 
