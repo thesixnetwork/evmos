@@ -100,7 +100,12 @@ func NewStakingExecutor(
 
 // RequiredGas returns the required gas for contract execution
 func (e *StakingExecutor) RequiredGas(input []byte, method *abi.Method) uint64 {
-	return cmn.DefaultGasCost(input, e.IsTransaction(method.Name))
+
+	if e.IsTransaction(method.Name) {
+		return e.kvGasConfig.WriteCostFlat + (e.kvGasConfig.WriteCostPerByte * uint64(len(input)))
+	}
+
+	return e.kvGasConfig.ReadCostFlat + (e.kvGasConfig.ReadCostPerByte * uint64(len(input)))
 }
 
 // Execute implements the Executor interface

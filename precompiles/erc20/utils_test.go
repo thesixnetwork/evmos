@@ -233,10 +233,10 @@ func (s *PrecompileTestSuite) setupERC20Executor(denom string) *erc20.ERC20Execu
 	tokenPair := erc20types.NewTokenPair(utiltx.GenerateAddress(), denom, erc20types.OWNER_MODULE)
 	s.network.App.Erc20Keeper.SetTokenPair(s.network.GetContext(), tokenPair)
 
-	precompile, err := setupERC20ExecutorForTokenPair(*s.network, tokenPair)
+	executor, err := setupERC20ExecutorForTokenPair(*s.network, tokenPair)
 	s.Require().NoError(err, "failed to set up %q erc20 precompile", tokenPair.Denom)
 
-	return precompile
+	return executor
 }
 
 // setupERC20Precompile is a helper function to set up an instance of the ERC20 precompile for
@@ -257,7 +257,6 @@ func (is *IntegrationTestSuite) setupERC20Precompile(denom string, tokenPairs []
 		is.network.App.BankKeeper,
 		is.network.App.AuthzKeeper,
 		is.network.App.TransferKeeper,
-		cmn.DefaultExpirationDuration,
 	)
 
 	abi, err := erc20.GetABI()
@@ -265,7 +264,7 @@ func (is *IntegrationTestSuite) setupERC20Precompile(denom string, tokenPairs []
 		Expect(err).ToNot(HaveOccurred(), "failed to get ABI for %q erc20 precompile", tokenPair.Denom)
 	}
 
-	precompile.Precompile = cmn.NewPrecompile(abi, executor, executor.Address(), "erc20")
+	precompile.Precompile = cmn.NewPrecompile(abi, executor, executor.Address(), tokenPair.Denom)
 	Expect(err).ToNot(HaveOccurred(), "failed to set up %q erc20 precompile", tokenPair.Denom)
 
 	return precompile
@@ -282,7 +281,6 @@ func setupERC20ExecutorForTokenPair(
 		unitNetwork.App.BankKeeper,
 		unitNetwork.App.AuthzKeeper,
 		unitNetwork.App.TransferKeeper,
-		cmn.DefaultExpirationDuration,
 	)
 
 	abi, err := erc20.GetABI()
@@ -290,7 +288,7 @@ func setupERC20ExecutorForTokenPair(
 		return nil, errorsmod.Wrapf(err, "failed to get ABI for %q erc20 precompile", tokenPair.Denom)
 	}
 
-	precompile := cmn.NewPrecompile(abi, executor, executor.Address(), "erc20")
+	precompile := cmn.NewPrecompile(abi, executor, executor.Address(), tokenPair.Denom)
 
 	err = unitNetwork.App.Erc20Keeper.EnableDynamicPrecompiles(
 		unitNetwork.GetContext(),
@@ -316,7 +314,6 @@ func setupERC20PrecompileForTokenPair(
 		unitNetwork.App.BankKeeper,
 		unitNetwork.App.AuthzKeeper,
 		unitNetwork.App.TransferKeeper,
-		cmn.DefaultExpirationDuration,
 	)
 
 	abi, err := erc20.GetABI()
@@ -324,7 +321,7 @@ func setupERC20PrecompileForTokenPair(
 		return nil, errorsmod.Wrapf(err, "failed to get ABI for %q erc20 precompile", tokenPair.Denom)
 	}
 
-	precompile.Precompile = cmn.NewPrecompile(abi, executor, executor.Address(), "erc20")
+	precompile.Precompile = cmn.NewPrecompile(abi, executor, executor.Address(), tokenPair.Denom)
 
 	err = unitNetwork.App.Erc20Keeper.EnableDynamicPrecompiles(
 		unitNetwork.GetContext(),
@@ -351,7 +348,6 @@ func setupNewERC20PrecompileForTokenPair(
 		unitNetwork.App.BankKeeper,
 		unitNetwork.App.AuthzKeeper,
 		unitNetwork.App.TransferKeeper,
-		cmn.DefaultExpirationDuration,
 	)
 
 	abi, err := erc20.GetABI()
@@ -359,7 +355,7 @@ func setupNewERC20PrecompileForTokenPair(
 		return nil, errorsmod.Wrapf(err, "failed to get ABI for %q erc20 precompile", tokenPair.Denom)
 	}
 
-	precompile.Precompile = cmn.NewPrecompile(abi, executor, executor.Address(), "erc20")
+	precompile.Precompile = cmn.NewPrecompile(abi, executor, executor.Address(), tokenPair.Denom)
 
 	// Update the params via gov proposal
 	params := unitNetwork.App.Erc20Keeper.GetParams(unitNetwork.GetContext())

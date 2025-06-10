@@ -3,7 +3,6 @@ package gov_test
 import (
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 
@@ -123,7 +122,7 @@ func (s *PrecompileTestSuite) TestRun() {
 			evm.WithPrecompiles(precompiles.Map, precompiles.Addresses)
 
 			// Run precompiled contract
-			bz, err := s.precompile.GetExecutor().Execute(ctx, &abi.Method{}, contract.CallerAddress, contractAddr, []interface{}{}, common.Big0, tc.readOnly, evm)
+			bz, err := s.precompile.Run(evm, contract.CallerAddress, contract.Address(), contract.Input, contract.Value(), true)
 
 			// Check results
 			if tc.expPass {

@@ -413,7 +413,7 @@ func (s *PrecompileTestSuite) TestRun() {
 			1, // use gas > 0 to avoid doing gas estimation
 			true,
 			false,
-			"write protection",
+			"cannot call non-view method in read-only mode",
 		},
 		{
 			"fail - invalid method",

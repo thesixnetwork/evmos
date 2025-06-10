@@ -214,7 +214,7 @@ var _ = Describe("ERC20 Extension -", func() {
 				},
 				directCallToken2: {
 					Address: is.precompileTwo.Address(),
-					ABI:     is.precompile.ABI,
+					ABI:     is.precompileTwo.ABI,
 				},
 				contractCall: {
 					Address: contractAddr,

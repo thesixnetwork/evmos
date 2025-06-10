@@ -114,7 +114,6 @@ func NewERC20Executor(
 	bankKeeper bankkeeper.Keeper,
 	authzKeeper authzkeeper.Keeper,
 	transferKeeper transferkeeper.Keeper,
-	ApprovalExpiration time.Duration,
 ) *ERC20Executor {
 	return &ERC20Executor{
 		BankKeeper:         bankKeeper,
@@ -130,6 +129,7 @@ func NewERC20Executor(
 func (e *ERC20Executor) RequiredGas(input []byte, method *abi.Method) uint64 {
 
 	switch method.Name {
+	// ERC-20 transactions
 	case TransferMethod, TransferFromMethod:
 		return GasTransfer
 	case auth.ApproveMethod:
@@ -138,6 +138,7 @@ func (e *ERC20Executor) RequiredGas(input []byte, method *abi.Method) uint64 {
 		return GasIncreaseAllowance
 	case auth.DecreaseAllowanceMethod:
 		return GasDecreaseAllowance
+		// ERC-20 queries
 	case NameMethod:
 		return GasName
 	case SymbolMethod:
