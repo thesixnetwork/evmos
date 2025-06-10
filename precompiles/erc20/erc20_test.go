@@ -140,14 +140,14 @@ func (s *PrecompileTestSuite) TestRequiredGas() {
 			malleate: func() []byte {
 				return []byte("invalid method")
 			},
-			expGas: 0,
+			expGas: 3000,
 		},
 		{
 			name: "input bytes too short",
 			malleate: func() []byte {
 				return []byte{0x00, 0x00, 0x00}
 			},
-			expGas: 0,
+			expGas: 3000,
 		},
 	}
 

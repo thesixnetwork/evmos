@@ -16,7 +16,6 @@ import (
 
 	"github.com/evmos/evmos/v20/contracts"
 	auth "github.com/evmos/evmos/v20/precompiles/authorization"
-	cmn "github.com/evmos/evmos/v20/precompiles/common"
 	"github.com/evmos/evmos/v20/precompiles/erc20"
 	"github.com/evmos/evmos/v20/precompiles/erc20/testdata"
 	"github.com/evmos/evmos/v20/precompiles/testutil"
@@ -50,8 +49,8 @@ type IntegrationTestSuite struct {
 	tokenDenom    string // erc20 precompile denom with supply
 	tokenDenomTwo string // erc20 precompile denom with zero supply
 
-	precompile    *cmn.Precompile // erc20 precompile with supply
-	precompileTwo *cmn.Precompile // erc20 precompile with zero supply
+	precompile    *erc20.Precompile // erc20 precompile with supply
+	precompileTwo *erc20.Precompile // erc20 precompile with zero supply
 }
 
 func (is *IntegrationTestSuite) SetupTest() {

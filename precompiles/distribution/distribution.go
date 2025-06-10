@@ -16,8 +16,10 @@ import (
 	stakingkeeper "github.com/evmos/evmos/v20/x/staking/keeper"
 )
 
-var _ vm.PrecompiledContract = &Precompile{}
-var _ cmn.Executor = &DistributionExecutor{}
+var (
+	_ vm.PrecompiledContract = &Precompile{}
+	_ cmn.Executor           = &DistributionExecutor{}
+)
 
 type Precompile struct {
 	*cmn.Precompile

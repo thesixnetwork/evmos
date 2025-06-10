@@ -17,8 +17,10 @@ import (
 	evmtypes "github.com/evmos/evmos/v20/x/evm/types"
 )
 
-var _ vm.PrecompiledContract = &Precompile{}
-var _ cmn.Executor = &GovExecutor{}
+var (
+	_ vm.PrecompiledContract = &Precompile{}
+	_ cmn.Executor           = &GovExecutor{}
+)
 
 type Precompile struct {
 	*cmn.Precompile

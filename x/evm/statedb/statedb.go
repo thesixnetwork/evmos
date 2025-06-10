@@ -57,7 +57,7 @@ type StateDB struct {
 	refund uint64
 
 	// Per-transaction logs
-	logs []*ethtypes.Log
+	logs map[common.Hash][]*ethtypes.Log
 
 	// Per-transaction access list
 	accessList *accessList
@@ -81,6 +81,7 @@ func New(ctx sdk.Context, keeper Keeper, txConfig TxConfig) *StateDB {
 		journal:          newJournal(),
 		accessList:       newAccessList(),
 		transientStorage: newTransientStorage(),
+		logs:             make(map[common.Hash][]*ethtypes.Log),
 		preimages:        make(map[common.Hash][]byte),
 		txConfig:         txConfig,
 	}
@@ -134,18 +135,29 @@ func (s *StateDB) cache() error {
 
 // AddLog adds a log, called by evm.
 func (s *StateDB) AddLog(log *ethtypes.Log) {
-	s.journal.append(addLogChange{})
+	s.journal.append(addLogChange{txhash: s.txConfig.TxHash})
 
 	log.TxHash = s.txConfig.TxHash
 	log.BlockHash = s.txConfig.BlockHash
 	log.TxIndex = s.txConfig.TxIndex
 	log.Index = s.txConfig.LogIndex + uint(len(s.logs))
-	s.logs = append(s.logs, log)
+	s.logs[s.txConfig.TxHash] = append(s.logs[s.txConfig.TxHash], log)
 }
 
-// Logs returns the logs of current transaction.
+func (s *StateDB) GetLogs(hash common.Hash, blockHash common.Hash) []*ethtypes.Log {
+	logs := s.logs[hash]
+	for _, l := range logs {
+		l.BlockHash = blockHash
+	}
+	return logs
+}
+
 func (s *StateDB) Logs() []*ethtypes.Log {
-	return s.logs
+	var logs []*ethtypes.Log
+	for _, lgs := range s.logs {
+		logs = append(logs, lgs...)
+	}
+	return logs
 }
 
 // AddRefund adds gas to the refund counter

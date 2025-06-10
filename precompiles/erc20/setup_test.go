@@ -3,7 +3,6 @@ package erc20_test
 import (
 	"testing"
 
-	cmn "github.com/evmos/evmos/v20/precompiles/common"
 	erc20precompile "github.com/evmos/evmos/v20/precompiles/erc20"
 	"github.com/evmos/evmos/v20/testutil/integration/evmos/factory"
 	"github.com/evmos/evmos/v20/testutil/integration/evmos/grpc"
@@ -19,16 +18,15 @@ var s *PrecompileTestSuite
 type PrecompileTestSuite struct {
 	suite.Suite
 
-	bondDenom string
+	bondDenom, tokenDenom string
 	// tokenDenom is the specific token denomination used in testing the ERC20 precompile.
 	// This denomination is used to instantiate the precompile.
-	tokenDenom  string
 	network     *network.UnitTestNetwork
 	factory     factory.TxFactory
 	grpcHandler grpc.Handler
 	keyring     testkeyring.Keyring
 
-	precompile *cmn.Precompile
+	precompile *erc20precompile.Precompile
 	executor   *erc20precompile.ERC20Executor
 }
 
@@ -62,4 +60,5 @@ func (s *PrecompileTestSuite) SetupTest() {
 	// NOTE: This has to be done AFTER assigning the suite fields.
 	s.tokenDenom = "xmpl"
 	s.precompile = s.setupERC20Precompile(s.tokenDenom)
+	s.executor = s.setupERC20Executor(s.tokenDenom)
 }

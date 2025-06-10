@@ -25,9 +25,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	
-	"github.com/evmos/evmos/v20/x/evm/core/vm"
+
 	"github.com/evmos/evmos/v20/x/evm/core/tracers"
+	"github.com/evmos/evmos/v20/x/evm/core/vm"
 )
 
 //go:generate go run github.com/fjl/gencodec -type flatCallAction -field-override flatCallActionMarshaling -out gen_flatcallaction_json.go

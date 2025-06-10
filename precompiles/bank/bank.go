@@ -26,8 +26,10 @@ const (
 	SupplyOfMethod    = "supplyOf"
 )
 
-var _ vm.PrecompiledContract = &Precompile{}
-var _ cmn.Executor = &BankExecutor{}
+var (
+	_ vm.PrecompiledContract = &Precompile{}
+	_ cmn.Executor           = &BankExecutor{}
+)
 
 type Precompile struct {
 	*cmn.Precompile

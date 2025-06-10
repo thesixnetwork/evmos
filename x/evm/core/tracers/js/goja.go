@@ -28,9 +28,9 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 
-	"github.com/evmos/evmos/v20/x/evm/core/vm"
 	"github.com/evmos/evmos/v20/x/evm/core/tracers"
 	jsassets "github.com/evmos/evmos/v20/x/evm/core/tracers/js/internal/tracers"
+	"github.com/evmos/evmos/v20/x/evm/core/vm"
 )
 
 var assetTracers = make(map[string]string)
@@ -58,9 +58,11 @@ func init() {
 // hex strings into big ints.
 var bigIntProgram = goja.MustCompile("bigInt", bigIntegerJS, false)
 
-type toBigFn = func(vm *goja.Runtime, val string) (goja.Value, error)
-type toBufFn = func(vm *goja.Runtime, val []byte) (goja.Value, error)
-type fromBufFn = func(vm *goja.Runtime, buf goja.Value, allowString bool) ([]byte, error)
+type (
+	toBigFn   = func(vm *goja.Runtime, val string) (goja.Value, error)
+	toBufFn   = func(vm *goja.Runtime, val []byte) (goja.Value, error)
+	fromBufFn = func(vm *goja.Runtime, buf goja.Value, allowString bool) ([]byte, error)
+)
 
 func toBuf(vm *goja.Runtime, bufType goja.Value, val []byte) (goja.Value, error) {
 	// bufType is usually Uint8Array. This is equivalent to `new Uint8Array(val)` in JS.

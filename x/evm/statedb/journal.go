@@ -283,7 +283,12 @@ func (ch refundChange) dirtied() *common.Address {
 }
 
 func (ch addLogChange) revert(s *StateDB) {
-	s.logs = s.logs[:len(s.logs)-1]
+	logs := s.logs[ch.txhash]
+	if len(logs) == 1 {
+		delete(s.logs, ch.txhash)
+	} else {
+		s.logs[ch.txhash] = logs[:len(logs)-1]
+	}
 }
 
 func (ch addLogChange) dirtied() *common.Address {

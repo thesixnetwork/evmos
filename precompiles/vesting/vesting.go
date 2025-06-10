@@ -27,8 +27,10 @@ import (
 // PrecompileAddress of the vesting EVM extension in hex format.
 const PrecompileAddress = "0x0000000000000000000000000000000000000803"
 
-var _ vm.PrecompiledContract = &Precompile{}
-var _ cmn.Executor = &VestingExecutor{}
+var (
+	_ vm.PrecompiledContract = &Precompile{}
+	_ cmn.Executor           = &VestingExecutor{}
+)
 
 // Precompile defines the precompiled contract for staking.
 type Precompile struct {

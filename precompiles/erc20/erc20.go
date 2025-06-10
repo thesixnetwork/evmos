@@ -18,7 +18,6 @@ import (
 	erc20types "github.com/evmos/evmos/v20/x/erc20/types"
 	"github.com/evmos/evmos/v20/x/evm/core/vm"
 	"github.com/evmos/evmos/v20/x/evm/statedb"
-	evmtypes "github.com/evmos/evmos/v20/x/evm/types"
 	transferkeeper "github.com/evmos/evmos/v20/x/ibc/transfer/keeper"
 )
 
@@ -51,8 +50,10 @@ const (
 	DecreaseAllowanceMethod = "decreaseAllowance"
 )
 
-var _ vm.PrecompiledContract = &Precompile{}
-var _ cmn.Executor = &ERC20Executor{}
+var (
+	_ vm.PrecompiledContract = &Precompile{}
+	_ cmn.Executor           = &ERC20Executor{}
+)
 
 // Precompile defines the precompiled contract for staking.
 type Precompile struct {
@@ -99,7 +100,7 @@ func NewPrecompile(
 		AuthzKeeper:        authzKeeper,
 		tokenPair:          tokenPair,
 		approvalExpiration: cmn.DefaultExpirationDuration,
-		address:            common.HexToAddress(evmtypes.ICS20PrecompileAddress),
+		address:            tokenPair.GetERC20Contract(),
 		precompile:         precompile,
 	}
 	precompile.Precompile = cmn.NewPrecompile(abi, executor, executor.address, "erc20")
@@ -120,7 +121,7 @@ func NewERC20Executor(
 		AuthzKeeper:        authzKeeper,
 		tokenPair:          tokenPair,
 		approvalExpiration: cmn.DefaultExpirationDuration,
-		address:            common.HexToAddress(evmtypes.ICS20PrecompileAddress),
+		address:            tokenPair.GetERC20Contract(),
 	}
 }
 

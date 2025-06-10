@@ -27,8 +27,10 @@ import (
 // PrecompileAddress of the ICS-20 EVM extension in hex format.
 const PrecompileAddress = "0x0000000000000000000000000000000000000802"
 
-var _ vm.PrecompiledContract = &Precompile{}
-var _ cmn.Executor = &ICS20Executor{}
+var (
+	_ vm.PrecompiledContract = &Precompile{}
+	_ cmn.Executor           = &ICS20Executor{}
+)
 
 //go:embed abi.json
 var f embed.FS

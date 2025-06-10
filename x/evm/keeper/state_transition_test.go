@@ -249,7 +249,7 @@ func (suite *KeeperTestSuite) TestGetEthIntrinsicGas() {
 			3,
 			false,
 			true,
-			params.TxGas + params.TxDataNonZeroGasEIP2028 *1,
+			params.TxGas + params.TxDataNonZeroGasEIP2028*1,
 		},
 	}
 

@@ -35,8 +35,8 @@ type PrecompileTestSuite struct {
 	grpcHandler grpc.Handler
 	keyring     testkeyring.Keyring
 
-	executor   *bank.BankExecutor
 	precompile *bank.Precompile
+	executor   *bank.BankExecutor
 }
 
 func TestPrecompileTestSuite(t *testing.T) {

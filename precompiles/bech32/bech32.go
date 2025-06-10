@@ -17,8 +17,10 @@ import (
 	evmtypes "github.com/evmos/evmos/v20/x/evm/types"
 )
 
-var _ vm.PrecompiledContract = &Precompile{}
-var _ cmn.Executor = &Bech32Executor{}
+var (
+	_ vm.PrecompiledContract = &Precompile{}
+	_ cmn.Executor           = &Bech32Executor{}
+)
 
 // Precompile defines the precompiled contract for Bech32 encoding.
 type Precompile struct {

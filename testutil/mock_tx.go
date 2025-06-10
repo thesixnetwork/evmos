@@ -24,7 +24,6 @@ func (m *MockTx) GetMsgs() []sdk.Msg {
 }
 
 func (m *MockTx) GetMsgsV2() ([]protov2.Message, error) {
-
 	return nil, errors.New("not implemented")
 }
 
