@@ -442,7 +442,7 @@ func (suite *StateDBTestSuite) TestAccessList() {
 				StorageKeys: []common.Hash{value1},
 			}}
 
-			db.Prepare(params.Rules{}, address, address2, &address3, vm.PrecompiledAddressesBerlin, al)
+			db.Prepare(params.TestRules, address, address2, &address3, vm.PrecompiledAddressesBerlin, al)
 
 			// check sender and dst
 			suite.Require().True(db.AddressInAccessList(address))
@@ -569,15 +569,16 @@ func (suite *StateDBTestSuite) TestIterateStorage() {
 	suite.Require().Equal(1, len(storage))
 }
 
-func CollectContractStorage(db vm.StateDB) statedb.Storage {
+func CollectContractStorage(db *statedb.StateDB) statedb.Storage {
 	storage := make(statedb.Storage)
-	// err := db.ForEachStorage(address, func(k, v common.Hash) bool {
-	// 	storage[k] = v
-	// 	return true
-	// })
-	// if err != nil {
-	// 	return nil
-	// }
+	err := db.ForEachStorage(address, func(k, v common.Hash) bool {
+		storage[k] = v
+		// return false to break early
+		return false
+	})
+	if err != nil {
+		return nil
+	}
 
 	return storage
 }
