@@ -57,7 +57,7 @@ type StateDB struct {
 	refund uint64
 
 	// Per-transaction logs
-	logs map[common.Hash][]*ethtypes.Log
+	logs    map[common.Hash][]*ethtypes.Log
 
 	// Per-transaction access list
 	accessList *accessList
@@ -151,6 +151,7 @@ func (s *StateDB) GetLogs(hash common.Hash, blockHash common.Hash) []*ethtypes.L
 	}
 	return logs
 }
+
 
 func (s *StateDB) Logs() []*ethtypes.Log {
 	var logs []*ethtypes.Log

@@ -14,6 +14,7 @@ import (
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
+	auth "github.com/evmos/evmos/v20/precompiles/authorization"
 	cmn "github.com/evmos/evmos/v20/precompiles/common"
 	erc20types "github.com/evmos/evmos/v20/x/erc20/types"
 	"github.com/evmos/evmos/v20/x/evm/core/vm"
@@ -103,7 +104,7 @@ func NewPrecompile(
 		address:            tokenPair.GetERC20Contract(),
 		precompile:         precompile,
 	}
-	precompile.Precompile = cmn.NewPrecompile(abi, executor, executor.address, "erc20")
+	precompile.Precompile = cmn.NewPrecompile(abi, executor, executor.address, tokenPair.Denom)
 	return precompile, nil
 }
 
@@ -127,18 +128,15 @@ func NewERC20Executor(
 
 // RequiredGas returns the required gas for each method based on the method name
 func (e *ERC20Executor) RequiredGas(input []byte, method *abi.Method) uint64 {
-	if method == nil {
-		return cmn.UnknownMethodCallGas
-	}
 
 	switch method.Name {
 	case TransferMethod, TransferFromMethod:
 		return GasTransfer
-	case ApproveMethod:
+	case auth.ApproveMethod:
 		return GasApprove
-	case IncreaseAllowanceMethod:
+	case auth.IncreaseAllowanceMethod:
 		return GasIncreaseAllowance
-	case DecreaseAllowanceMethod:
+	case auth.DecreaseAllowanceMethod:
 		return GasDecreaseAllowance
 	case NameMethod:
 		return GasName
@@ -150,10 +148,10 @@ func (e *ERC20Executor) RequiredGas(input []byte, method *abi.Method) uint64 {
 		return GasTotalSupply
 	case BalanceOfMethod:
 		return GasBalanceOf
-	case AllowanceMethod:
+	case auth.AllowanceMethod:
 		return GasAllowance
 	default:
-		return cmn.UnknownMethodCallGas
+		return 0
 	}
 }
 
@@ -174,8 +172,11 @@ func (e *ERC20Executor) GetABI() abi.ABI {
 // IsTransaction returns whether the method is a transaction or a query
 func (e *ERC20Executor) IsTransaction(methodName string) bool {
 	switch methodName {
-	case TransferMethod, TransferFromMethod, ApproveMethod,
-		IncreaseAllowanceMethod, DecreaseAllowanceMethod:
+	case TransferMethod,
+		TransferFromMethod,
+		auth.ApproveMethod,
+		auth.IncreaseAllowanceMethod,
+		auth.DecreaseAllowanceMethod:
 		return true
 	default:
 		return false
@@ -205,7 +206,19 @@ func (e *ERC20Executor) Execute(
 	}
 
 	switch method.Name {
-	// Query methods
+
+	// ERC-20 transactions
+	case TransferMethod:
+		return e.Transfer(ctx, caller, stateDB, method, args)
+	case TransferFromMethod:
+		return e.TransferFrom(ctx, caller, stateDB, method, args)
+	case auth.ApproveMethod:
+		return e.Approve(ctx, caller, stateDB, method, args)
+	case auth.IncreaseAllowanceMethod:
+		return e.IncreaseAllowance(ctx, caller, stateDB, method, args)
+	case auth.DecreaseAllowanceMethod:
+		return e.DecreaseAllowance(ctx, caller, stateDB, method, args)
+	// ERC-20 queries
 	case NameMethod:
 		return e.Name(ctx, caller, stateDB, method, args)
 	case SymbolMethod:
@@ -216,20 +229,8 @@ func (e *ERC20Executor) Execute(
 		return e.TotalSupply(ctx, caller, stateDB, method, args)
 	case BalanceOfMethod:
 		return e.BalanceOf(ctx, caller, stateDB, method, args)
-	case AllowanceMethod:
+	case auth.AllowanceMethod:
 		return e.Allowance(ctx, caller, stateDB, method, args)
-
-	// Transaction methods
-	case TransferMethod:
-		return e.Transfer(ctx, caller, stateDB, method, args)
-	case ApproveMethod:
-		return e.Approve(ctx, caller, stateDB, method, args)
-	case TransferFromMethod:
-		return e.TransferFrom(ctx, caller, stateDB, method, args)
-	case IncreaseAllowanceMethod:
-		return e.IncreaseAllowance(ctx, caller, stateDB, method, args)
-	case DecreaseAllowanceMethod:
-		return e.DecreaseAllowance(ctx, caller, stateDB, method, args)
 	default:
 		return nil, fmt.Errorf(cmn.ErrUnknownMethod, method.Name)
 	}

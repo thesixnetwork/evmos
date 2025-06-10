@@ -127,8 +127,9 @@ func (e *ERC20Executor) TotalSupply(
 	method *abi.Method,
 	_ []interface{},
 ) ([]byte, error) {
-	supply := e.BankKeeper.GetSupply(ctx, e.tokenPair.GetDenom()).Amount.BigInt()
-	return method.Outputs.Pack(supply)
+	supply := e.BankKeeper.GetSupply(ctx, e.tokenPair.Denom)
+	
+	return method.Outputs.Pack(supply.Amount.BigInt())
 }
 
 // BalanceOf returns the balance of the given account address
@@ -144,11 +145,9 @@ func (e *ERC20Executor) BalanceOf(
 		return nil, err
 	}
 
-	balance := e.BankKeeper.GetBalance(
-		ctx, account.Bytes(), e.tokenPair.GetDenom(),
-	).Amount.BigInt()
+	balance := e.BankKeeper.GetBalance(ctx, account.Bytes(), e.tokenPair.GetDenom())
 
-	return method.Outputs.Pack(balance)
+	return method.Outputs.Pack(balance.Amount.BigInt())
 }
 
 // Allowance returns the amount which spender is still allowed to withdraw from owner
@@ -175,6 +174,7 @@ func (e *ERC20Executor) Allowance(
 		// standard ERC20 smart contracts, which return zero if an allowance is not found.
 		allowance = common.Big0
 	}
+
 	return method.Outputs.Pack(allowance)
 }
 

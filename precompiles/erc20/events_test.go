@@ -39,7 +39,7 @@ func (s *PrecompileTestSuite) TestEmitTransferEvent() {
 			s.Require().NoError(err, "expected transfer event to be emitted successfully")
 
 			log := stateDB.Logs()[0]
-			s.Require().Equal(log.Address, s.precompile.Address())
+			s.Require().Equal(log.Address, s.executor.Address())
 
 			// Check event signature matches the one emitted
 			event := s.precompile.ABI.Events[erc20precompile.EventTypeTransfer]
@@ -87,7 +87,7 @@ func (s *PrecompileTestSuite) TestEmitApprovalEvent() {
 			s.Require().NoError(err, "expected approval event to be emitted successfully")
 
 			log := stateDB.Logs()[0]
-			s.Require().Equal(log.Address, s.precompile.Address())
+			s.Require().Equal(log.Address, s.executor.Address())
 
 			// Check event signature matches the one emitted
 			event := s.precompile.ABI.Events[authorization.EventTypeApproval]

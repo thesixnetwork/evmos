@@ -64,7 +64,42 @@ func (p *Precompile) Run(
 	value *big.Int,
 	readOnly bool,
 ) ([]byte, error) {
-	ctx, method, args, snap, err := p.Prepare(evm, input)
+
+	err := ValidateNonPayable(value)
+	if err != nil {
+		return nil, err
+	}
+
+
+	// NOTE: This is a special case where the calling transaction does not specify a function name.
+	// In this case we default to a `fallback` or `receive` function on the contract.
+
+	// Simplify the calldata checks
+	isEmptyCallData := len(input) == 0
+	isShortCallData := len(input) > 0 && len(input) < 4
+	isStandardCallData := len(input) >= 4
+
+	var method *abi.Method
+	
+	switch {
+	// Case 1: Calldata is empty
+	case isEmptyCallData:
+		method, err = p.emptyCallData(value)
+
+	// Case 2: calldata is non-empty but less than 4 bytes needed for a method
+	case isShortCallData:
+		method, err = p.methodIDCallData()
+
+	// Case 3: calldata is non-empty and contains the minimum 4 bytes needed for a method
+	case isStandardCallData:
+		method, err = p.standardCallData(input)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+
+	ctx, args, snap, err := p.Prepare(evm, input, method)
 	if err != nil {
 		return nil, err
 	}
@@ -96,30 +131,34 @@ func (p *Precompile) Run(
 }
 
 // Prepare returns context, method, arguments, and a snapshot for journaling.
-func (p *Precompile) Prepare(evm *vm.EVM, input []byte) (sdk.Context, *abi.Method, []interface{}, snapshot, error) {
+func (p *Precompile) Prepare(evm *vm.EVM, input []byte, method *abi.Method) (sdk.Context, []interface{}, snapshot, error) {
 	var snap snapshot
 	stateDB, ok := evm.StateDB.(*statedb.StateDB)
 	if !ok {
-		return sdk.Context{}, nil, nil, snap, errors.New("not run in EVM")
+		return sdk.Context{}, nil, snap, errors.New("not run in EVM")
 	}
-	ctx := stateDB.GetContext()
+
+	// get the stateDB cache ctx
+	ctx, err := stateDB.GetCacheContext()
+	if err != nil {
+		return sdk.Context{}, nil, snap, err
+	}
+	// ctx := stateDB.GetContext()
 	snap.MultiStore = stateDB.MultiStoreSnapshot()
 	snap.Events = ctx.EventManager().Events()
 
-	methodID, err := ExtractMethodID(input)
-	if err != nil {
-		return sdk.Context{}, nil, nil, snap, err
+	// commit the current changes in the cache ctx
+	// to get the updated state for the precompile call
+	if err := stateDB.CommitWithCacheCtx(); err != nil {
+		return sdk.Context{}, nil, snap, err
 	}
-	method, err := p.MethodById(methodID)
-	if err != nil {
-		return sdk.Context{}, nil, nil, snap, err
-	}
+
 	argsBz := input[4:]
 	args, err := method.Inputs.Unpack(argsBz)
 	if err != nil {
-		return sdk.Context{}, nil, nil, snap, err
+		return sdk.Context{}, nil, snap, err
 	}
-	return ctx, method, args, snap, nil
+	return ctx, args, snap, nil
 }
 
 // AddJournalEntries records balance changes and state snapshot for potential revert.
@@ -185,7 +224,7 @@ func ValidateArgsLength(args []interface{}, length int) error {
 
 func ValidateNonPayable(value *big.Int) error {
 	if value != nil && value.Sign() != 0 {
-		return errors.New("sending funds to a non-payable function")
+		return vm.ErrExecutionReverted
 	}
 	return nil
 }
@@ -202,4 +241,48 @@ func DefaultGasCost(input []byte, isTransaction bool) uint64 {
 		return storetypes.KVGasConfig().WriteCostFlat + (storetypes.KVGasConfig().WriteCostPerByte * uint64(len(input)))
 	}
 	return storetypes.KVGasConfig().ReadCostFlat + (storetypes.KVGasConfig().ReadCostPerByte * uint64(len(input)))
+}
+// emptyCallData is a helper function that returns the method to be called when the calldata is empty.
+func (p Precompile) emptyCallData(value *big.Int) (method *abi.Method, err error) {
+	switch {
+	// Case 1.1: Send call or transfer tx - 'receive' is called if present and value is transferred
+	case value.Sign() > 0 && p.HasReceive():
+		return &p.Receive, nil
+	// Case 1.2: Either 'receive' is not present, or no value is transferred - call 'fallback' if present
+	case p.HasFallback():
+		return &p.Fallback, nil
+	// Case 1.3: Neither 'receive' nor 'fallback' are present - return error
+	default:
+		return nil, vm.ErrExecutionReverted
+	}
+}
+
+// methodIDCallData is a helper function that returns the method to be called when the calldata is less than 4 bytes.
+func (p Precompile) methodIDCallData() (method *abi.Method, err error) {
+	// Case 2.2: calldata contains less than 4 bytes needed for a method and 'fallback' is not present - return error
+	if !p.HasFallback() {
+		return nil, vm.ErrExecutionReverted
+	}
+	// Case 2.1: calldata contains less than 4 bytes needed for a method - 'fallback' is called if present
+	return &p.Fallback, nil
+}
+
+// standardCallData is a helper function that returns the method to be called when the calldata is 4 bytes or more.
+func (p Precompile) standardCallData(input []byte) (method *abi.Method, err error) {
+	methodID := input[:4]
+	// NOTE: this function iterates over the method map and returns
+	// the method with the given ID
+	method, err = p.MethodById(methodID)
+
+	// Case 3.1 calldata contains a non-existing method ID, and `fallback` is not present - return error
+	if err != nil && !p.HasFallback() {
+		return nil, err
+	}
+
+	// Case 3.2: calldata contains a non-existing method ID - 'fallback' is called if present
+	if err != nil && p.HasFallback() {
+		return &p.Fallback, nil
+	}
+
+	return method, nil
 }

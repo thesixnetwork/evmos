@@ -271,26 +271,6 @@ func (is *IntegrationTestSuite) setupERC20Precompile(denom string, tokenPairs []
 	return precompile
 }
 
-func (is *IntegrationTestSuite) setupERC20Executor(denom string, tokenPairs []erc20types.TokenPair) *erc20.ERC20Executor {
-	var tokenPair erc20types.TokenPair
-	for _, tp := range tokenPairs {
-		if tp.Denom != denom {
-			continue
-		}
-		tokenPair = tp
-	}
-
-	executor := erc20.NewERC20Executor(
-		tokenPair,
-		is.network.App.BankKeeper,
-		is.network.App.AuthzKeeper,
-		is.network.App.TransferKeeper,
-		cmn.DefaultExpirationDuration,
-	)
-
-	return executor
-}
-
 // setupERC20PrecompileForTokenPair is a helper function to set up an instance of the ERC20 precompile for
 // a given token pair and adds the precompile to the available and active precompiles.
 // Do not use this function for integration tests.
