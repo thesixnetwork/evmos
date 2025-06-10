@@ -49,9 +49,6 @@ type Keeper struct {
 	stakingKeeper types.StakingKeeper
 	// fetch EIP1559 base fee and parameters
 	feeMarketKeeper types.FeeMarketKeeper
-	// erc20Keeper interface needed to instantiate erc20 precompiles
-	erc20Keeper types.Erc20Keeper
-
 	// chain ID number obtained from the context's chain id
 	eip155ChainID *big.Int
 
@@ -76,7 +73,6 @@ func NewKeeper(
 	bankKeeper types.BankKeeper,
 	sk types.StakingKeeper,
 	fmk types.FeeMarketKeeper,
-	erc20Keeper types.Erc20Keeper,
 	tracer string,
 	ss paramstypes.Subspace,
 ) *Keeper {
@@ -101,7 +97,6 @@ func NewKeeper(
 		storeKey:        storeKey,
 		transientKey:    transientKey,
 		tracer:          tracer,
-		erc20Keeper:     erc20Keeper,
 		ss:              ss,
 	}
 }
