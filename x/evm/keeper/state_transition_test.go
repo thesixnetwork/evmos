@@ -181,6 +181,7 @@ func (suite *KeeperTestSuite) TestGetEthIntrinsicGas() {
 		accessList         gethtypes.AccessList
 		height             int64
 		isContractCreation bool
+		rule               params.Rules
 		noError            bool
 		expGas             uint64
 	}{
@@ -190,6 +191,7 @@ func (suite *KeeperTestSuite) TestGetEthIntrinsicGas() {
 			nil,
 			1,
 			false,
+			params.Rules{IsHomestead: false, IsIstanbul: false, IsShanghai: false},
 			true,
 			params.TxGas,
 		},
@@ -199,6 +201,7 @@ func (suite *KeeperTestSuite) TestGetEthIntrinsicGas() {
 			nil,
 			1,
 			false,
+			params.Rules{IsHomestead: false, IsIstanbul: false, IsShanghai: false},
 			true,
 			params.TxGas + params.TxDataZeroGas*1,
 		},
@@ -208,6 +211,7 @@ func (suite *KeeperTestSuite) TestGetEthIntrinsicGas() {
 			nil,
 			1,
 			true,
+			params.Rules{IsHomestead: false, IsIstanbul: false, IsShanghai: false},
 			true,
 			params.TxGas + params.TxDataNonZeroGasFrontier*1,
 		},
@@ -219,6 +223,7 @@ func (suite *KeeperTestSuite) TestGetEthIntrinsicGas() {
 			},
 			1,
 			false,
+			params.Rules{IsHomestead: false, IsIstanbul: false, IsShanghai: false},
 			true,
 			params.TxGas + params.TxAccessListAddressGas,
 		},
@@ -230,6 +235,7 @@ func (suite *KeeperTestSuite) TestGetEthIntrinsicGas() {
 			},
 			1,
 			false,
+			params.Rules{IsHomestead: false, IsIstanbul: false, IsShanghai: false},
 			true,
 			params.TxGas + params.TxAccessListAddressGas + params.TxAccessListStorageKeyGas*1,
 		},
@@ -239,6 +245,7 @@ func (suite *KeeperTestSuite) TestGetEthIntrinsicGas() {
 			nil,
 			2,
 			true,
+			params.Rules{IsHomestead: true, IsIstanbul: false, IsShanghai: false},
 			true,
 			params.TxGasContractCreation,
 		},
@@ -248,6 +255,7 @@ func (suite *KeeperTestSuite) TestGetEthIntrinsicGas() {
 			nil,
 			3,
 			false,
+			params.Rules{IsHomestead: true, IsIstanbul: true, IsShanghai: false},
 			true,
 			params.TxGas + params.TxDataNonZeroGasEIP2028*1,
 		},
@@ -255,15 +263,14 @@ func (suite *KeeperTestSuite) TestGetEthIntrinsicGas() {
 
 	for _, tc := range testCases {
 		suite.Run(fmt.Sprintf("Case %s", tc.name), func() {
-			evmparams := suite.network.App.EvmKeeper.GetParams(
+			appparams := suite.network.App.EvmKeeper.GetParams(
 				suite.network.GetContext(),
 			)
-			ethCfg := evmparams.ChainConfig.EthereumConfig(
+			ethCfg := appparams.ChainConfig.EthereumConfig(
 				suite.network.App.EvmKeeper.ChainID(),
 			)
 			ethCfg.HomesteadBlock = big.NewInt(2)
 			ethCfg.IstanbulBlock = big.NewInt(3)
-
 			signer := gethtypes.LatestSignerForChainID(suite.network.App.EvmKeeper.ChainID())
 
 			ctx := suite.network.GetContext().WithBlockHeight(tc.height)
@@ -290,7 +297,7 @@ func (suite *KeeperTestSuite) TestGetEthIntrinsicGas() {
 				ctx,
 				m,
 				tc.isContractCreation,
-				params.TestRules,
+				tc.rule,
 			)
 
 			if tc.noError {
