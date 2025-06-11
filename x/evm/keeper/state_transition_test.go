@@ -255,10 +255,10 @@ func (suite *KeeperTestSuite) TestGetEthIntrinsicGas() {
 
 	for _, tc := range testCases {
 		suite.Run(fmt.Sprintf("Case %s", tc.name), func() {
-			params := suite.network.App.EvmKeeper.GetParams(
+			evmparams := suite.network.App.EvmKeeper.GetParams(
 				suite.network.GetContext(),
 			)
-			ethCfg := params.ChainConfig.EthereumConfig(
+			ethCfg := evmparams.ChainConfig.EthereumConfig(
 				suite.network.App.EvmKeeper.ChainID(),
 			)
 			ethCfg.HomesteadBlock = big.NewInt(2)
@@ -288,8 +288,8 @@ func (suite *KeeperTestSuite) TestGetEthIntrinsicGas() {
 			gas, err := suite.network.App.EvmKeeper.GetEthIntrinsicGas(
 				ctx,
 				m,
-				ethCfg,
 				tc.isContractCreation,
+				params.TestRules,
 			)
 
 			if tc.noError {
