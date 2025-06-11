@@ -3,6 +3,7 @@
 package keeper
 
 import (
+	"fmt"
 	"math/big"
 
 	cmttypes "github.com/cometbft/cometbft/types"
@@ -287,7 +288,8 @@ func (k *Keeper) ApplyMessageWithConfig(
 	var (
 		ret   []byte // return bytes from evm execution
 		vmErr error  // vm errors do not effect consensus and are therefore not assigned to err
-		// rules = cfg.ChainConfig.Rules(big.NewInt(ctx.BlockHeight()), cfg.ChainConfig.MergeNetsplitBlock != nil, uint64(ctx.BlockTime().Unix()))
+		rules = cfg.ChainConfig.Rules(big.NewInt(ctx.BlockHeight()), cfg.ChainConfig.MergeNetsplitBlock != nil, uint64(ctx.BlockTime().Unix()))
+		contractCreation = msg.To == nil
 	)
 
 	stateDB := statedb.New(ctx, k, txConfig)
@@ -311,10 +313,9 @@ func (k *Keeper) ApplyMessageWithConfig(
 	}
 
 	sender := vm.AccountRef(msg.From)
-	contractCreation := msg.To == nil
-	isLondon := cfg.ChainConfig.IsLondon(evm.Context.BlockNumber)
+	isLondon := rules.IsLondon
 
-	intrinsicGas, err := k.GetEthIntrinsicGas(ctx, msg, cfg.ChainConfig, contractCreation)
+	intrinsicGas, err := k.GetEthIntrinsicGas(ctx, msg, contractCreation, rules)
 	if err != nil {
 		// should have already been checked on Ante Handler
 		return nil, errorsmod.Wrap(err, "intrinsic gas failed")
@@ -327,11 +328,12 @@ func (k *Keeper) ApplyMessageWithConfig(
 	}
 	leftoverGas -= intrinsicGas
 
-	// access list preparation is moved from ante handler to here, because it's needed when `ApplyMessage` is called
-	// under contexts where ante handlers are not run, for example `eth_call` and `eth_estimateGas`.
-	if rules := cfg.ChainConfig.Rules(big.NewInt(ctx.BlockHeight()), cfg.ChainConfig.MergeNetsplitBlock != nil, uint64(ctx.BlockTime().Unix())); rules.IsBerlin {
-		stateDB.Prepare(rules, msg.From, cfg.CoinBase, msg.To, vm.DefaultActivePrecompiles(rules), msg.AccessList)
+	// Check whether the init code size has been exceeded.
+	if rules.IsShanghai && contractCreation && len(msg.Data) > params.MaxInitCodeSize {
+		return nil, fmt.Errorf("%w: code size %v limit %v", core.ErrMaxInitCodeSizeExceeded, len(msg.Data), params.MaxInitCodeSize)
 	}
+	
+	stateDB.Prepare(rules, msg.From, cfg.CoinBase, msg.To, vm.DefaultActivePrecompiles(rules), msg.AccessList)
 
 	if contractCreation {
 		// take over the nonce management from evm:
@@ -394,6 +396,18 @@ func (k *Keeper) ApplyMessageWithConfig(
 	gasUsed := math.LegacyMaxDec(minimumGasUsed, math.LegacyNewDec(int64(temporaryGasUsed))).TruncateInt().Uint64() //#nosec G115
 	// reset leftoverGas, to be used by the tracer
 	leftoverGas = msg.GasLimit - gasUsed
+
+	// feeParam := k.feeMarketKeeper.GetParams(ctx)
+	// if feeParam.NoBaseFee && msg.GasFeeCap.Sign() == 0 && msg.GasTipCap.Sign() == 0 {
+	// 	// Skip fee payment when NoBaseFee is set and the fee fields
+	// 	// are 0. This avoids a negative effectiveTip being applied to
+	// 	// the coinbase when simulating calls.
+	// }else {
+	// 	fee := new(big.Int).SetUint64(gasUsed)
+	// 	fee.Mul(fee, msg.GasPrice)
+	// 	stateDB.AddBalance(cfg.CoinBase, fee)
+	// }
+
 
 	return &types.MsgEthereumTxResponse{
 		GasUsed: gasUsed,

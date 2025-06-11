@@ -199,7 +199,7 @@ func (suite *StateDBTestSuite) TestState() {
 		{"set empty value", func(db *statedb.StateDB) {
 			db.SetState(address, key1, common.Hash{})
 		}, statedb.Storage{}},
-		{"update existing state value", func(db *statedb.StateDB) {
+		{"set state even if same as original value (due to possible reverts within precompile calls)", func(db *statedb.StateDB) {
 			db.SetState(address, key1, value1)
 			db.SetState(address, key1, common.Hash{})
 		}, statedb.Storage{
@@ -588,21 +588,3 @@ func CollectContractStorage(db *statedb.StateDB) statedb.Storage {
 func TestStateDBTestSuite(t *testing.T) {
 	suite.Run(t, &StateDBTestSuite{})
 }
-
-// // ForEachStorage iterate the contract storage, the iteration order is not defined.
-// func forEachStorage(s *statedb.StateDB, addr common.Address, cb func(key, value common.Hash) bool) error {
-// 	so := s.getStateObject(addr)
-// 	if so == nil {
-// 		return nil
-// 	}
-// 	s.keeper.ForEachStorage(s.ctx, addr, func(key, value common.Hash) bool {
-// 		if value, dirty := so.dirtyStorage[key]; dirty {
-// 			return cb(key, value)
-// 		}
-// 		if len(value) > 0 {
-// 			return cb(key, value)
-// 		}
-// 		return true
-// 	})
-// 	return nil
-// }

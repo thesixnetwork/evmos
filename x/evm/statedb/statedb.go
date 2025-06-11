@@ -639,7 +639,7 @@ func (s *StateDB) commitWithCtx(ctx sdk.Context) error {
 	dirties := s.journal.sortedDirties()
 	for _, addr := range dirties {
 		obj := s.stateObjects[addr]
-		if obj == nil {
+		if obj.deleted {
 			continue
 		}
 		if obj.selfDestructed {
@@ -648,11 +648,16 @@ func (s *StateDB) commitWithCtx(ctx sdk.Context) error {
 			}
 		} else {
 			if obj.code != nil && obj.dirtyCode {
+				// Write any contract code associated with the state object
 				s.keeper.SetCode(ctx, obj.CodeHash(), obj.code)
+				obj.dirtyCode = false
 			}
+
+			// Write any storage changes in the state object to its storage trie
 			if err := s.keeper.SetAccount(ctx, obj.Address(), obj.account); err != nil {
 				return errorsmod.Wrap(err, "failed to set account")
 			}
+
 			storageKeys := obj.dirtyStorage.SortedKeys()
 			for _, key := range storageKeys {
 				dirtyValue := obj.dirtyStorage[key]

@@ -263,9 +263,12 @@ func (suite *KeeperTestSuite) TestGetEthIntrinsicGas() {
 			)
 			ethCfg.HomesteadBlock = big.NewInt(2)
 			ethCfg.IstanbulBlock = big.NewInt(3)
-			signer := gethtypes.LatestSignerForChainID(suite.network.App.EvmKeeper.ChainID())
 
+			
+			signer := gethtypes.LatestSignerForChainID(suite.network.App.EvmKeeper.ChainID())
+			
 			ctx := suite.network.GetContext().WithBlockHeight(tc.height)
+			rules := ethCfg.Rules(big.NewInt(ctx.BlockHeight()), ethCfg.MergeNetsplitBlock != nil, uint64(ctx.BlockTime().Unix()))
 
 			addr := suite.keyring.GetAddr(0)
 			krSigner := utiltx.NewSigner(suite.keyring.GetPrivKey(0))
@@ -288,8 +291,8 @@ func (suite *KeeperTestSuite) TestGetEthIntrinsicGas() {
 			gas, err := suite.network.App.EvmKeeper.GetEthIntrinsicGas(
 				ctx,
 				m,
-				ethCfg,
 				tc.isContractCreation,
+				rules,
 			)
 
 			if tc.noError {
