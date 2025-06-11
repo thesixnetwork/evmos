@@ -127,7 +127,6 @@ func NewERC20Executor(
 
 // RequiredGas returns the required gas for each method based on the method name
 func (e *ERC20Executor) RequiredGas(input []byte, method *abi.Method) uint64 {
-
 	switch method.Name {
 	// ERC-20 transactions
 	case TransferMethod, TransferFromMethod:

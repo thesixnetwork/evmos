@@ -128,7 +128,7 @@ func (e *ERC20Executor) TotalSupply(
 	_ []interface{},
 ) ([]byte, error) {
 	supply := e.BankKeeper.GetSupply(ctx, e.tokenPair.Denom)
-	
+
 	return method.Outputs.Pack(supply.Amount.BigInt())
 }
 

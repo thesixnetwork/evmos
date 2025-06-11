@@ -163,6 +163,9 @@ func (s *stateObject) touch() {
 // It is used to add funds to the destination account of a transfer.
 func (s *stateObject) AddBalance(amount *big.Int) {
 	if amount.Sign() == 0 {
+		if s.empty() {
+			s.touch()
+		}
 		return
 	}
 	s.SetBalance(new(big.Int).Add(s.Balance(), amount))
