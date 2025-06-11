@@ -286,9 +286,9 @@ func (k *Keeper) ApplyMessageWithConfig(
 	overrides *rpctypes.StateOverride,
 ) (*types.MsgEthereumTxResponse, error) {
 	var (
-		ret   []byte // return bytes from evm execution
-		vmErr error  // vm errors do not effect consensus and are therefore not assigned to err
-		rules = cfg.ChainConfig.Rules(big.NewInt(ctx.BlockHeight()), cfg.ChainConfig.MergeNetsplitBlock != nil, uint64(ctx.BlockTime().Unix()))
+		ret              []byte // return bytes from evm execution
+		vmErr            error  // vm errors do not effect consensus and are therefore not assigned to err
+		rules            = cfg.ChainConfig.Rules(big.NewInt(ctx.BlockHeight()), cfg.ChainConfig.MergeNetsplitBlock != nil, uint64(ctx.BlockTime().Unix()))
 		contractCreation = msg.To == nil
 	)
 
@@ -327,7 +327,7 @@ func (k *Keeper) ApplyMessageWithConfig(
 		return nil, errorsmod.Wrap(core.ErrIntrinsicGas, "apply message")
 	}
 	leftoverGas -= intrinsicGas
-	
+
 	// Check whether the init code size has been exceeded.
 	if rules.IsShanghai && contractCreation && len(msg.Data) > params.MaxInitCodeSize {
 		return nil, fmt.Errorf("%w: code size %v limit %v", core.ErrMaxInitCodeSizeExceeded, len(msg.Data), params.MaxInitCodeSize)
@@ -360,10 +360,8 @@ func (k *Keeper) ApplyMessageWithConfig(
 	gasUsed := msg.GasLimit - leftoverGas
 
 	// Apply refund counter, capped to a refund quotient
-	refund := gasUsed / refundQuotient
-	if refund > stateDB.GetRefund() {
-		refund = stateDB.GetRefund()
-	}
+	refund := min(gasUsed/refundQuotient, stateDB.GetRefund())
+
 	leftoverGas += refund
 	gasUsed -= refund
 
@@ -411,7 +409,7 @@ func (k *Keeper) ApplyMessageWithConfig(
 			if baseFee == nil {
 				baseFee = big.NewInt(0)
 			}
-			
+
 			effectiveTip = new(big.Int).Set(msg.GasTipCap)
 			if msg.GasFeeCap.Cmp(new(big.Int).Add(baseFee, msg.GasTipCap)) < 0 {
 				// If GasFeeCap < BaseFee + GasTipCap, use GasFeeCap - BaseFee
@@ -421,7 +419,7 @@ func (k *Keeper) ApplyMessageWithConfig(
 				}
 			}
 		}
-		
+
 		fee := new(big.Int).SetUint64(finalGasUsed)
 		fee.Mul(fee, effectiveTip)
 		stateDB.AddBalance(cfg.CoinBase, fee)
