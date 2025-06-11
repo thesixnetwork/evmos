@@ -64,12 +64,10 @@ func (p *Precompile) Run(
 	value *big.Int,
 	readOnly bool,
 ) ([]byte, error) {
-
 	err := ValidateNonPayable(value)
 	if err != nil {
 		return nil, err
 	}
-
 
 	// NOTE: This is a special case where the calling transaction does not specify a function name.
 	// In this case we default to a `fallback` or `receive` function on the contract.
@@ -80,7 +78,7 @@ func (p *Precompile) Run(
 	isStandardCallData := len(input) >= 4
 
 	var method *abi.Method
-	
+
 	switch {
 	// Case 1: Calldata is empty
 	case isEmptyCallData:
@@ -97,7 +95,6 @@ func (p *Precompile) Run(
 	if err != nil {
 		return nil, err
 	}
-
 
 	ctx, args, snap, err := p.Prepare(evm, input, method)
 	if err != nil {
@@ -242,6 +239,7 @@ func DefaultGasCost(input []byte, isTransaction bool) uint64 {
 	}
 	return storetypes.KVGasConfig().ReadCostFlat + (storetypes.KVGasConfig().ReadCostPerByte * uint64(len(input)))
 }
+
 // emptyCallData is a helper function that returns the method to be called when the calldata is empty.
 func (p Precompile) emptyCallData(value *big.Int) (method *abi.Method, err error) {
 	switch {

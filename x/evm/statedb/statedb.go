@@ -57,7 +57,7 @@ type StateDB struct {
 	refund uint64
 
 	// Per-transaction logs
-	logs    map[common.Hash][]*ethtypes.Log
+	logs map[common.Hash][]*ethtypes.Log
 
 	// Per-transaction access list
 	accessList *accessList
@@ -151,7 +151,6 @@ func (s *StateDB) GetLogs(hash common.Hash, blockHash common.Hash) []*ethtypes.L
 	}
 	return logs
 }
-
 
 func (s *StateDB) Logs() []*ethtypes.Log {
 	var logs []*ethtypes.Log
@@ -291,6 +290,10 @@ func (s *StateDB) getStateObject(addr common.Address) *stateObject {
 	return obj
 }
 
+func (s *StateDB) setStateObject(object *stateObject) {
+	s.stateObjects[object.Address()] = object
+}
+
 // getOrNewStateObject retrieves a state object or create a new state object if nil.
 func (s *StateDB) getOrNewStateObject(addr common.Address) *stateObject {
 	stateObject := s.getStateObject(addr)
@@ -351,10 +354,6 @@ func (s *StateDB) ForEachStorage(addr common.Address, cb func(key, value common.
 		return true
 	})
 	return nil
-}
-
-func (s *StateDB) setStateObject(object *stateObject) {
-	s.stateObjects[object.Address()] = object
 }
 
 /*
@@ -571,6 +570,20 @@ func (s *StateDB) AddSlotToAccessList(addr common.Address, slot common.Hash) {
 // AddressInAccessList returns true if the given address is in the access list.
 func (s *StateDB) AddressInAccessList(addr common.Address) bool {
 	return s.accessList.ContainsAddress(addr)
+}
+
+// convertAccountSet converts a provided account set from address keyed to hash keyed.
+func (s *StateDB) convertAccountSet(set map[common.Address]*ethtypes.StateAccount) map[common.Hash]struct{} {
+	ret := make(map[common.Hash]struct{}, len(set))
+	for addr := range set {
+		obj, exist := s.stateObjects[addr]
+		if !exist {
+			ret[crypto.Keccak256Hash(addr[:])] = struct{}{}
+		} else {
+			ret[obj.db.txConfig.TxHash] = struct{}{}
+		}
+	}
+	return ret
 }
 
 // SlotInAccessList returns true if the given (address, slot)-tuple is in the access list.

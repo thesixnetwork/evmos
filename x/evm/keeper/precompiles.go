@@ -32,7 +32,6 @@ func (k *Keeper) GetPrecompileInstance(
 		Map:       addressMap,
 		Addresses: []common.Address{address},
 	}, found, nil
-
 }
 
 // GetPrecompilesCallHook returns a closure that can be used to instantiate the EVM with a specific

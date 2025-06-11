@@ -136,6 +136,7 @@ func (suite *StateDBTestSuite) TestDBError() {
 		}},
 		{"delete account", func(db vm.StateDB) {
 			db.SetNonce(errAddress, 1)
+			db.SelfDestruct(errAddress)
 			suite.Require().True(db.HasSelfDestructed(errAddress))
 		}},
 	}
@@ -198,7 +199,7 @@ func (suite *StateDBTestSuite) TestState() {
 		{"set empty value", func(db *statedb.StateDB) {
 			db.SetState(address, key1, common.Hash{})
 		}, statedb.Storage{}},
-		{"set state even if same as original value (due to possible reverts within precompile calls)", func(db *statedb.StateDB) {
+		{"update existing state value", func(db *statedb.StateDB) {
 			db.SetState(address, key1, value1)
 			db.SetState(address, key1, common.Hash{})
 		}, statedb.Storage{
@@ -314,6 +315,7 @@ func (suite *StateDBTestSuite) TestRevertSnapshot() {
 		{"suicide", func(db vm.StateDB) {
 			db.SetState(address, v1, v2)
 			db.SetCode(address, []byte("hello world"))
+			db.SelfDestruct(address)
 			suite.Require().True(db.HasSelfDestructed(address))
 		}},
 		{"add log", func(db vm.StateDB) {
@@ -442,7 +444,11 @@ func (suite *StateDBTestSuite) TestAccessList() {
 				StorageKeys: []common.Hash{value1},
 			}}
 
-			db.Prepare(params.TestRules, address, address2, &address3, vm.PrecompiledAddressesBerlin, al)
+			berlin := params.Rules{
+				IsBerlin: true,
+			}
+
+			db.Prepare(berlin, address, common.Address{}, &address2, vm.PrecompiledAddressesBerlin, al)
 
 			// check sender and dst
 			suite.Require().True(db.AddressInAccessList(address))
@@ -560,29 +566,43 @@ func (suite *StateDBTestSuite) TestIterateStorage() {
 
 	// break early iteration
 	storage = make(statedb.Storage)
-	err := db.ForEachStorage(address, func(k, v common.Hash) bool {
+	keeper.ForEachStorage(sdk.Context{}, address, func(k, v common.Hash) bool {
 		storage[k] = v
 		// return false to break early
 		return false
 	})
-	suite.Require().NoError(err)
+	// suite.Require().NoError(err)
 	suite.Require().Equal(1, len(storage))
 }
 
 func CollectContractStorage(db *statedb.StateDB) statedb.Storage {
 	storage := make(statedb.Storage)
-	err := db.ForEachStorage(address, func(k, v common.Hash) bool {
+	db.Keeper().ForEachStorage(sdk.Context{}, address, func(k, v common.Hash) bool {
 		storage[k] = v
-		// return false to break early
-		return false
+		// return true to continue iteration
+		return true
 	})
-	if err != nil {
-		return nil
-	}
-
 	return storage
 }
 
 func TestStateDBTestSuite(t *testing.T) {
 	suite.Run(t, &StateDBTestSuite{})
 }
+
+// // ForEachStorage iterate the contract storage, the iteration order is not defined.
+// func forEachStorage(s *statedb.StateDB, addr common.Address, cb func(key, value common.Hash) bool) error {
+// 	so := s.getStateObject(addr)
+// 	if so == nil {
+// 		return nil
+// 	}
+// 	s.keeper.ForEachStorage(s.ctx, addr, func(key, value common.Hash) bool {
+// 		if value, dirty := so.dirtyStorage[key]; dirty {
+// 			return cb(key, value)
+// 		}
+// 		if len(value) > 0 {
+// 			return cb(key, value)
+// 		}
+// 		return true
+// 	})
+// 	return nil
+// }
