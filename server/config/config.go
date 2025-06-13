@@ -71,7 +71,7 @@ const (
 	DefaultMaxTxGasWanted = 0
 
 	// DefaultEVMUnsafeOrderedTx is the default for enable multi tx in the same block for evm
-	DefaultEVMUnsafeOrderedTx bool = false
+	DefaultEVMUnsafeOrderedTx bool = true
 
 	// DefaultGasCap is the default cap on gas that can be used in eth_call/estimateGas
 	DefaultGasCap uint64 = 25000000

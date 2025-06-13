@@ -39,9 +39,6 @@ var (
 	// On v15, EIP 3855 was enabled
 	DefaultExtraEIPs   = []int32{3855}
 	DefaultEVMChannels = []string{
-		"channel-10", // Injective
-		"channel-31", // Cronos
-		"channel-83", // Kava
 	}
 	DefaultCreateAllowlistAddresses []string
 	DefaultCallAllowlistAddresses   []string
