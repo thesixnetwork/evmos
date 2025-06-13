@@ -316,25 +316,6 @@ func (b *Backend) EstimateGas(args evmtypes.TransactionArgs, blockNrOptional *rp
 	// the latest block height for querying.
 
 	if overrides != nil {
-		req := evmtypes.EthCallRequest{
-			Args:            bz,
-			GasCap:          b.RPCGasCap(),
-			ProposerAddress: sdk.ConsAddress(header.Block.ProposerAddress),
-			ChainId:         b.chainID.Int64(),
-		}
-
-		res, err := b.queryClient.EstimateGas(rpctypes.ContextWithHeight(blockNr.Int64()), &req)
-		if err != nil {
-			return 0, err
-		}
-
-		gas = res.Gas
-
-		if err = handleRevertError(res.VmError, res.Ret); err != nil {
-			return 0, err
-		}
-
-	} else {
 		req := evmtypes.EthCallWithOverrideRequest{
 			Args:            bz,
 			GasCap:          b.RPCGasCap(),
@@ -344,6 +325,26 @@ func (b *Backend) EstimateGas(args evmtypes.TransactionArgs, blockNrOptional *rp
 		}
 
 		res, err := b.queryClient.EstimateGasWithOverride(rpctypes.ContextWithHeight(blockNr.Int64()), &req)
+		if err != nil {
+			return 0, err
+		}
+
+		if err = handleRevertError(res.VmError, res.Ret); err != nil {
+			return 0, err
+		}
+
+		gas = res.Gas
+
+	} else {
+
+		req := evmtypes.EthCallRequest{
+			Args:            bz,
+			GasCap:          b.RPCGasCap(),
+			ProposerAddress: sdk.ConsAddress(header.Block.ProposerAddress),
+			ChainId:         b.chainID.Int64(),
+		}
+
+		res, err := b.queryClient.EstimateGas(rpctypes.ContextWithHeight(blockNr.Int64()), &req)
 		if err != nil {
 			return 0, err
 		}
