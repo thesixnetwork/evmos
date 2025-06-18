@@ -62,6 +62,38 @@ var (
 // JumpTable contains the EVM opcodes supported at a given fork.
 type JumpTable [256]*operation
 
+// DefaultJumpTable defines the default jump table used by the EVM interpreter.
+func DefaultJumpTable(rules params.Rules) (jumpTable *JumpTable) {
+	switch {
+	case rules.IsCancun:
+		jumpTable = &cancunInstructionSet
+	case rules.IsShanghai:
+		jumpTable = &shanghaiInstructionSet
+	case rules.IsMerge:
+		jumpTable = &mergeInstructionSet
+	case rules.IsLondon:
+		jumpTable = &londonInstructionSet
+	case rules.IsBerlin:
+		jumpTable = &berlinInstructionSet
+	case rules.IsIstanbul:
+		jumpTable = &istanbulInstructionSet
+	case rules.IsConstantinople:
+		jumpTable = &constantinopleInstructionSet
+	case rules.IsByzantium:
+		jumpTable = &byzantiumInstructionSet
+	case rules.IsEIP158:
+		jumpTable = &spuriousDragonInstructionSet
+	case rules.IsEIP150:
+		jumpTable = &tangerineWhistleInstructionSet
+	case rules.IsHomestead:
+		jumpTable = &homesteadInstructionSet
+	default:
+		jumpTable = &frontierInstructionSet
+	}
+
+	return jumpTable
+}
+
 func validate(jt JumpTable) JumpTable {
 	for i, op := range jt {
 		if op == nil {

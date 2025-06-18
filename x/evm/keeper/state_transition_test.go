@@ -281,7 +281,7 @@ func (suite *KeeperTestSuite) TestGetEthIntrinsicGas() {
 			m, err := newNativeMessage(
 				nonce,
 				ctx.BlockHeight(),
-				uint64(ctx.BlockTime().Unix()),
+				uint64(ctx.BlockHeader().Time.Unix()),
 				addr,
 				ethCfg,
 				krSigner,

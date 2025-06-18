@@ -48,7 +48,7 @@ func (k *Keeper) NewEVM(
 		Coinbase:    cfg.CoinBase,
 		GasLimit:    evmostypes.BlockGasLimit(ctx),
 		BlockNumber: big.NewInt(ctx.BlockHeight()),
-		Time:        uint64(ctx.BlockTime().Unix()),
+		Time:        uint64(ctx.BlockHeader().Time.Unix()),
 		Difficulty:  big.NewInt(0), // unused. Only required in PoW context
 		BaseFee:     cfg.BaseFee,
 		Random:      nil, // not supported
@@ -158,7 +158,7 @@ func (k *Keeper) ApplyTransaction(ctx sdk.Context, tx *ethtypes.Transaction) (*t
 	txConfig := k.TxConfig(ctx, tx.Hash())
 
 	// get the signer according to the chain rules from the config and block height
-	signer := ethtypes.MakeSigner(cfg.ChainConfig, big.NewInt(ctx.BlockHeight()), uint64(ctx.BlockTime().Unix()))
+	signer := ethtypes.MakeSigner(cfg.ChainConfig, big.NewInt(ctx.BlockHeight()), uint64(ctx.BlockHeader().Time.Unix()))
 	sender, err := signer.Sender(tx)
 	if err != nil {
 		return nil, err
@@ -288,7 +288,7 @@ func (k *Keeper) ApplyMessageWithConfig(
 	var (
 		ret              []byte // return bytes from evm execution
 		vmErr            error  // vm errors do not effect consensus and are therefore not assigned to err
-		rules            = cfg.ChainConfig.Rules(big.NewInt(ctx.BlockHeight()), cfg.ChainConfig.MergeNetsplitBlock != nil, uint64(ctx.BlockTime().Unix()))
+		rules            = cfg.ChainConfig.Rules(big.NewInt(ctx.BlockHeight()), cfg.ChainConfig.MergeNetsplitBlock != nil, uint64(ctx.BlockHeader().Time.Unix()))
 		contractCreation = msg.To == nil
 	)
 

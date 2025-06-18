@@ -275,7 +275,7 @@ func (b *Backend) SetTxDefaults(args evmtypes.TransactionArgs) (evmtypes.Transac
 			Nonce:                args.Nonce,
 		}
 
-		blockNr := rpctypes.NewBlockNumber(big.NewInt(0))
+		blockNr := rpctypes.NewBlockNumber(big.NewInt(b.clientCtx.Height))
 		estimated, err := b.EstimateGas(callArgs, &blockNr, nil)
 		if err != nil {
 			return args, err

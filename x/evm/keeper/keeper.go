@@ -230,7 +230,7 @@ func (k Keeper) GetAccountStorage(ctx sdk.Context, address common.Address) types
 
 // Tracer return a default vm.Tracer based on current keeper state
 func (k Keeper) Tracer(ctx sdk.Context, msg core.Message, ethCfg *params.ChainConfig) vm.EVMLogger {
-	return types.NewTracer(k.tracer, msg, ethCfg, ctx.BlockHeight(), uint64(ctx.BlockTime().Unix()))
+	return types.NewTracer(k.tracer, msg, ethCfg, ctx.BlockHeight(), uint64(ctx.BlockHeader().Time.Unix()))
 }
 
 // GetAccountWithoutBalance load nonce and codehash without balance,
