@@ -66,7 +66,7 @@ type Contract struct {
 }
 
 // NewContract returns a new contract environment for the execution of EVM.
-func NewContract(caller ContractRef, object ContractRef, value *big.Int, gas uint64) *Contract {
+func NewContract(caller, object ContractRef, value *big.Int, gas uint64) *Contract {
 	c := &Contract{CallerAddress: caller.Address(), caller: caller, self: object}
 
 	if parent, ok := caller.(*Contract); ok {
@@ -132,6 +132,7 @@ func (c *Contract) isCode(udest uint64) bool {
 	if c.isPrecompile {
 		return false
 	}
+
 	// Do we already have an analysis laying around?
 	if c.analysis != nil {
 		return c.analysis.codeSegment(udest)
@@ -219,6 +220,7 @@ func (c *Contract) SetCallCode(addr *common.Address, hash common.Hash, code []by
 	if c.isPrecompile {
 		return
 	}
+
 	c.Code = code
 	c.CodeHash = hash
 	c.CodeAddr = addr
@@ -230,6 +232,7 @@ func (c *Contract) SetCodeOptionalHash(addr *common.Address, codeAndHash *codeAn
 	if c.isPrecompile {
 		return
 	}
+	
 	c.Code = codeAndHash.code
 	c.CodeHash = codeAndHash.hash
 	c.CodeAddr = addr

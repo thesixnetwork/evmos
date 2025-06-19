@@ -32,6 +32,7 @@ func NewEmptyAccount() *Account {
 	return &Account{
 		Balance:  new(big.Int),
 		CodeHash: emptyCodeHash,
+		Nonce:    uint64(0),
 	}
 }
 
@@ -55,24 +56,6 @@ func (acct Account) IsContract() bool {
 // Storage represents in-memory cache/buffer of contract storage.
 type Storage map[common.Hash]common.Hash
 
-// SortedKeys sort the keys for deterministic iteration
-func (s Storage) SortedKeys() []common.Hash {
-	keys := make([]common.Hash, 0, len(s))
-	for k := range s {
-		keys = append(keys, k)
-	}
-	sort.Slice(keys, func(i, j int) bool {
-		return bytes.Compare(keys[i].Bytes(), keys[j].Bytes()) < 0
-	})
-	return keys
-}
-
-type Code []byte
-
-func (c Code) String() string {
-	return string(c)
-}
-
 func (s Storage) String() (str string) {
 	for key, value := range s {
 		str += fmt.Sprintf("%X : %X\n", key, value)
@@ -88,12 +71,24 @@ func (s Storage) Copy() Storage {
 	return cpy
 }
 
+// SortedKeys sort the keys for deterministic iteration
+func (s Storage) SortedKeys() []common.Hash {
+	keys := make([]common.Hash, 0, len(s))
+	for k := range s {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return bytes.Compare(keys[i].Bytes(), keys[j].Bytes()) < 0
+	})
+	return keys
+}
+
 // stateObject is the state of an account
 type stateObject struct {
 	db *StateDB
 
 	account Account
-	code    Code
+	code    []byte
 
 	// state storage
 	originStorage Storage

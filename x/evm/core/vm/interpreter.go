@@ -57,9 +57,32 @@ type EVMInterpreter struct {
 func NewEVMInterpreter(evm *EVM) *EVMInterpreter {
 	// If jump table was not initialised we set the default one.
 	var table *JumpTable
-
-	table = DefaultJumpTable(evm.chainRules)
-	
+	switch {
+	case evm.chainRules.IsCancun:
+		table = &cancunInstructionSet
+	case evm.chainRules.IsShanghai:
+		table = &shanghaiInstructionSet
+	case evm.chainRules.IsMerge:
+		table = &mergeInstructionSet
+	case evm.chainRules.IsLondon:
+		table = &londonInstructionSet
+	case evm.chainRules.IsBerlin:
+		table = &berlinInstructionSet
+	case evm.chainRules.IsIstanbul:
+		table = &istanbulInstructionSet
+	case evm.chainRules.IsConstantinople:
+		table = &constantinopleInstructionSet
+	case evm.chainRules.IsByzantium:
+		table = &byzantiumInstructionSet
+	case evm.chainRules.IsEIP158:
+		table = &spuriousDragonInstructionSet
+	case evm.chainRules.IsEIP150:
+		table = &tangerineWhistleInstructionSet
+	case evm.chainRules.IsHomestead:
+		table = &homesteadInstructionSet
+	default:
+		table = &frontierInstructionSet
+	}
 	var extraEips []int
 	if len(evm.Config.ExtraEips) > 0 {
 		// Deep-copy jumptable to prevent modification of opcodes in other tables
@@ -75,31 +98,6 @@ func NewEVMInterpreter(evm *EVM) *EVMInterpreter {
 	}
 	evm.Config.ExtraEips = extraEips
 	return &EVMInterpreter{evm: evm, table: table}
-}
-
-// EVM returns the EVM instance
-func (in *EVMInterpreter) EVM() *EVM {
-	return in.evm
-}
-
-// Config returns the configuration of the interpreter
-func (in EVMInterpreter) Config() Config {
-	return in.evm.Config
-}
-
-// ReadOnly returns whether the interpreter is in read-only mode
-func (in EVMInterpreter) ReadOnly() bool {
-	return in.readOnly
-}
-
-// ReturnData gets the last CALL's return data for subsequent reuse
-func (in *EVMInterpreter) ReturnData() []byte {
-	return in.returnData
-}
-
-// SetReturnData sets the last CALL's return data
-func (in *EVMInterpreter) SetReturnData(data []byte) {
-	in.returnData = data
 }
 
 // Run loops and evaluates the contract's code with the given input data and returns
@@ -129,19 +127,15 @@ func (in *EVMInterpreter) Run(contract *Contract, input []byte, readOnly bool) (
 		return nil, nil
 	}
 
-	mem := NewMemory()       // bound memory
-	stack, err := NewStack() // local stack
-	if err != nil {
-		return nil, err
-	}
-	callContext := &ScopeContext{
-		Memory:   mem,
-		Stack:    stack,
-		Contract: contract,
-	}
-
 	var (
-		op OpCode // current opcode
+		op          OpCode        // current opcode
+		mem         = NewMemory() // bound memory
+		stack       = newstack()  // local stack
+		callContext = &ScopeContext{
+			Memory:   mem,
+			Stack:    stack,
+			Contract: contract,
+		}
 		// For optimisation reason we're using uint64 as the program counter.
 		// It's theoretically possible to go above 2^64. The YP defines the PC
 		// to be uint256. Practically much less so feasible.
@@ -158,7 +152,7 @@ func (in *EVMInterpreter) Run(contract *Contract, input []byte, readOnly bool) (
 	// so that it get's executed _after_: the capturestate needs the stacks before
 	// they are returned to the pools
 	defer func() {
-		ReturnNormalStack(stack)
+		returnStack(stack)
 	}()
 	contract.Input = input
 
@@ -188,7 +182,7 @@ func (in *EVMInterpreter) Run(contract *Contract, input []byte, readOnly bool) (
 		operation := in.table[op]
 		cost = operation.constantGas // For tracing
 		// Validate stack
-		if sLen := stack.Len(); sLen < operation.minStack {
+		if sLen := stack.len(); sLen < operation.minStack {
 			return nil, &ErrStackUnderflow{stackLen: sLen, required: operation.minStack}
 		} else if sLen > operation.maxStack {
 			return nil, &ErrStackOverflow{stackLen: sLen, limit: operation.maxStack}

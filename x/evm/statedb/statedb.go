@@ -221,6 +221,8 @@ func (s *StateDB) GetCode(addr common.Address) []byte {
 func (s *StateDB) GetCodeSize(addr common.Address) int {
 	stateObject := s.getStateObject(addr)
 	if stateObject != nil {
+		fmt.Printf("######################## STATE OBJECT OF %v FOUND ########################\n", addr)
+		fmt.Printf("######################## STATE CODE SIZE %v ########################\n", stateObject.CodeSize())
 		return stateObject.CodeSize()
 	}
 	return 0
@@ -573,7 +575,7 @@ func (s *StateDB) AddressInAccessList(addr common.Address) bool {
 }
 
 // convertAccountSet converts a provided account set from address keyed to hash keyed.
-func (s *StateDB) convertAccountSet(set map[common.Address]*ethtypes.StateAccount) map[common.Hash]struct{} {
+func (s *StateDB) _(set map[common.Address]*ethtypes.StateAccount) map[common.Hash]struct{} {
 	ret := make(map[common.Hash]struct{}, len(set))
 	for addr := range set {
 		obj, exist := s.stateObjects[addr]
