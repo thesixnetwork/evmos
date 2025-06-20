@@ -232,7 +232,7 @@ func (c *Contract) SetCodeOptionalHash(addr *common.Address, codeAndHash *codeAn
 	if c.isPrecompile {
 		return
 	}
-	
+
 	c.Code = codeAndHash.code
 	c.CodeHash = codeAndHash.hash
 	c.CodeAddr = addr

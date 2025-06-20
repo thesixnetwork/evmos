@@ -44,16 +44,13 @@ func NewStack() (*Stack, error) {
 	return stack, nil
 }
 
-
 func (st *Stack) Cap() int {
 	return cap(st.Data)
 }
 
-
 func (st *Stack) Reset() {
 	st.Data = st.Data[:0]
 }
-
 
 // Print dumps the content of the stack
 func (st *Stack) Print() {
@@ -129,17 +126,14 @@ func (st *Stack) Back(n int) *uint256.Int {
 	return &st.Data[st.Len()-n-1]
 }
 
-
 func (st *Stack) PushN(ds ...uint256.Int) {
 	// FIXME: Is there a way to pass args by pointers.
 	st.Data = append(st.Data, ds...)
 }
 
-
 func (st *ReturnStack) Push(d uint32) {
 	st.data = append(st.data, d)
 }
-
 
 func (st *ReturnStack) Data() []uint32 {
 	return st.data

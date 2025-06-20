@@ -19,7 +19,6 @@ import (
 
 // GetEthIntrinsicGas returns the intrinsic gas cost for the transaction
 func (k *Keeper) GetEthIntrinsicGas(ctx sdk.Context, msg core.Message, isContractCreation bool, rules params.Rules) (uint64, error) {
-
 	return core.IntrinsicGas(msg.Data, msg.AccessList, isContractCreation, rules.IsHomestead, rules.IsIstanbul, false)
 }
 

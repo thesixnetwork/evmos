@@ -614,7 +614,6 @@ func TestOpTstore(t *testing.T) {
 		value          = common.Hex2Bytes("abcdef00000000000000abba000000000deaf000000c0de00100000000133700")
 	)
 
-
 	require.NoError(t, err)
 
 	// Add a stateObject for the caller and the contract being called
@@ -753,7 +752,7 @@ func TestRandom(t *testing.T) {
 		var (
 			env            = NewEVM(BlockContext{Random: &tt.random}, TxContext{}, nil, params.TestChainConfig, Config{})
 			pc             = uint64(0)
-			stack, err  = NewStack()
+			stack, err     = NewStack()
 			evmInterpreter = env.interpreter
 		)
 

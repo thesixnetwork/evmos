@@ -37,9 +37,9 @@ var (
 	}
 	// DefaultExtraEIPs defines the default extra EIPs to be included
 	// On v15, EIP 3855 was enabled
-	DefaultExtraEIPs   = []int32{3855}
+	DefaultExtraEIPs = []int32{3855}
 	// DefaultEVMChannels is an empty slice, not nil
-	DefaultEVMChannels = []string{}
+	DefaultEVMChannels              = []string{}
 	DefaultCreateAllowlistAddresses []string
 	DefaultCallAllowlistAddresses   []string
 	DefaultAccessControl            = AccessControl{
