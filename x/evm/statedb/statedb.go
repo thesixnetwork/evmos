@@ -221,8 +221,6 @@ func (s *StateDB) GetCode(addr common.Address) []byte {
 func (s *StateDB) GetCodeSize(addr common.Address) int {
 	stateObject := s.getStateObject(addr)
 	if stateObject != nil {
-		fmt.Printf("######################## STATE OBJECT OF %v FOUND ########################\n", addr)
-		fmt.Printf("######################## STATE CODE SIZE %v ########################\n", stateObject.CodeSize())
 		return stateObject.CodeSize()
 	}
 	return 0

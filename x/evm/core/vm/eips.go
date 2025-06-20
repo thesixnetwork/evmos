@@ -95,7 +95,7 @@ func enable1884(jt *JumpTable) {
 
 func opSelfBalance(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byte, error) {
 	balance, _ := uint256.FromBig(interpreter.evm.StateDB.GetBalance(scope.Contract.Address()))
-	scope.Stack.push(balance)
+	scope.Stack.Push(balance)
 	return nil, nil
 }
 
@@ -114,7 +114,7 @@ func enable1344(jt *JumpTable) {
 // opChainID implements CHAINID opcode
 func opChainID(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byte, error) {
 	chainId, _ := uint256.FromBig(interpreter.evm.chainConfig.ChainID)
-	scope.Stack.push(chainId)
+	scope.Stack.Push(chainId)
 	return nil, nil
 }
 
@@ -204,7 +204,7 @@ func enable1153(jt *JumpTable) {
 
 // opTload implements TLOAD opcode
 func opTload(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byte, error) {
-	loc := scope.Stack.peek()
+	loc := scope.Stack.Peek()
 	hash := common.Hash(loc.Bytes32())
 	val := interpreter.evm.StateDB.GetTransientState(scope.Contract.Address(), hash)
 	loc.SetBytes(val.Bytes())
@@ -216,8 +216,8 @@ func opTstore(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]b
 	if interpreter.readOnly {
 		return nil, ErrWriteProtection
 	}
-	loc := scope.Stack.pop()
-	val := scope.Stack.pop()
+	loc := scope.Stack.Pop()
+	val := scope.Stack.Pop()
 	interpreter.evm.StateDB.SetTransientState(scope.Contract.Address(), loc.Bytes32(), val.Bytes32())
 	return nil, nil
 }
@@ -225,7 +225,7 @@ func opTstore(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]b
 // opBaseFee implements BASEFEE opcode
 func opBaseFee(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byte, error) {
 	baseFee, _ := uint256.FromBig(interpreter.evm.Context.BaseFee)
-	scope.Stack.push(baseFee)
+	scope.Stack.Push(baseFee)
 	return nil, nil
 }
 
@@ -242,7 +242,7 @@ func enable3855(jt *JumpTable) {
 
 // opPush0 implements the PUSH0 opcode
 func opPush0(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byte, error) {
-	scope.Stack.push(new(uint256.Int))
+	scope.Stack.Push(new(uint256.Int))
 	return nil, nil
 }
 
@@ -269,9 +269,9 @@ func enable5656(jt *JumpTable) {
 // opMcopy implements the MCOPY opcode (https://eips.ethereum.org/EIPS/eip-5656)
 func opMcopy(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byte, error) {
 	var (
-		dst    = scope.Stack.pop()
-		src    = scope.Stack.pop()
-		length = scope.Stack.pop()
+		dst    = scope.Stack.Pop()
+		src    = scope.Stack.Pop()
+		length = scope.Stack.Pop()
 	)
 	// These values are checked for overflow during memory expansion calculation
 	// (the memorySize function on the opcode).
@@ -281,7 +281,7 @@ func opMcopy(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]by
 
 // opBlobHash implements the BLOBHASH opcode
 func opBlobHash(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byte, error) {
-	index := scope.Stack.peek()
+	index := scope.Stack.Peek()
 	if index.LtUint64(uint64(len(interpreter.evm.TxContext.BlobHashes))) {
 		blobHash := interpreter.evm.TxContext.BlobHashes[index.Uint64()]
 		index.SetBytes32(blobHash[:])
@@ -294,7 +294,7 @@ func opBlobHash(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([
 // opBlobBaseFee implements BLOBBASEFEE opcode
 func opBlobBaseFee(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byte, error) {
 	blobBaseFee, _ := uint256.FromBig(interpreter.evm.Context.BlobBaseFee)
-	scope.Stack.push(blobBaseFee)
+	scope.Stack.Push(blobBaseFee)
 	return nil, nil
 }
 
