@@ -440,6 +440,13 @@ func (suite *KeeperTestSuite) TestQueryParams() {
 
 	res, err := suite.network.GetEvmClient().Params(ctx, &types.QueryParamsRequest{})
 	suite.Require().NoError(err)
+
+	// If EVMChannels is nil in the response but empty in the expected params, set them both to empty
+	// to make them equal for comparison purposes
+	if res.Params.EVMChannels == nil && len(expParams.EVMChannels) == 0 {
+		res.Params.EVMChannels = []string{}
+	}
+
 	suite.Require().Equal(expParams, res.Params)
 }
 

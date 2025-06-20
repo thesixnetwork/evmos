@@ -21,6 +21,12 @@ func (k Keeper) GetParams(ctx sdk.Context) (params types.Params) {
 		return k.GetLegacyParams(ctx)
 	}
 	k.cdc.MustUnmarshal(bz, &params)
+
+	// Ensure EVMChannels is never nil but an empty slice if not set
+	if params.EVMChannels == nil {
+		params.EVMChannels = []string{}
+	}
+
 	return
 }
 
@@ -48,6 +54,12 @@ func (k Keeper) SetParams(ctx sdk.Context, params types.Params) error {
 func (k Keeper) GetLegacyParams(ctx sdk.Context) types.Params {
 	var params types.Params
 	k.ss.GetParamSetIfExists(ctx, &params)
+
+	// Ensure EVMChannels is never nil but an empty slice if not set
+	if params.EVMChannels == nil {
+		params.EVMChannels = []string{}
+	}
+
 	return params
 }
 

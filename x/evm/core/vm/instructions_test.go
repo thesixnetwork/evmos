@@ -645,11 +645,10 @@ func TestOpTstore(t *testing.T) {
 	}
 }
 
-func BenchmarkOpKeccak256(bench *testing.B) {
-	stack, err := NewStack() // local stack
-	bench.Error(err)
+func BenchmarkOpKeccak256(bench *testing.B) { // local stack
 	var (
 		env            = NewEVM(BlockContext{}, TxContext{}, nil, params.TestChainConfig, Config{})
+		stack, _       = NewStack()
 		mem            = NewMemory()
 		evmInterpreter = NewEVMInterpreter(env)
 	)
@@ -796,7 +795,7 @@ func TestBlobHash(t *testing.T) {
 		{name: "out-of-bounds (nil)", idx: 25, expect: zero, hashes: nil},
 	} {
 		var (
-			stack, _     = NewStack() // local stack
+			stack, _       = NewStack() // local stack
 			env            = NewEVM(BlockContext{}, TxContext{BlobHashes: tt.hashes}, nil, params.TestChainConfig, Config{})
 			pc             = uint64(0)
 			evmInterpreter = env.interpreter
