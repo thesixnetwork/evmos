@@ -25,6 +25,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/core/rawdb"
@@ -106,13 +108,14 @@ func init() {
 }
 
 func testTwoOperandOp(t *testing.T, tests []TwoOperandTestcase, opFn executionFunc, name string) {
-	stack, err := NewStack() // local stack
-	t.Error(err)
 	var (
 		env         = NewEVM(BlockContext{}, TxContext{}, nil, params.TestChainConfig, Config{})
+		stack, err  = NewStack()
 		pc          = uint64(0)
 		interpreter = env.interpreter
 	)
+
+	require.NoError(t, err)
 
 	for i, test := range tests {
 		x := new(uint256.Int).SetBytes(common.Hex2Bytes(test.X))
@@ -206,13 +209,15 @@ func TestSAR(t *testing.T) {
 }
 
 func TestAddMod(t *testing.T) {
-	stack, err := NewStack() // local stack
-	t.Error(err)
 	var (
 		env            = NewEVM(BlockContext{}, TxContext{}, nil, params.TestChainConfig, Config{})
+		stack, err     = NewStack()
 		evmInterpreter = NewEVMInterpreter(env)
 		pc             = uint64(0)
 	)
+
+	require.NoError(t, err)
+
 	tests := []struct {
 		x        string
 		y        string
@@ -250,16 +255,17 @@ func TestAddMod(t *testing.T) {
 func TestWriteExpectedValues(t *testing.T) {
 	t.Skip("Enable this test to create json test cases.")
 
-	stack, err := NewStack() // local stack
-	t.Error(err)
-
 	// getResult is a convenience function to generate the expected values
 	getResult := func(args []*twoOperandParams, opFn executionFunc) []TwoOperandTestcase {
 		var (
 			env         = NewEVM(BlockContext{}, TxContext{}, nil, params.TestChainConfig, Config{})
+			stack, err  = NewStack()
 			pc          = uint64(0)
 			interpreter = env.interpreter
 		)
+
+		require.NoError(t, err)
+
 		result := make([]TwoOperandTestcase, len(args))
 		for i, param := range args {
 			x := new(uint256.Int).SetBytes(common.Hex2Bytes(param.x))
@@ -299,14 +305,12 @@ func TestJsonTestcases(t *testing.T) {
 }
 
 func opBenchmark(bench *testing.B, op executionFunc, args ...string) {
-	stack, err := NewStack() // local stack
-	bench.Error(err)
 	var (
 		env            = NewEVM(BlockContext{}, TxContext{}, nil, params.TestChainConfig, Config{})
+		stack, _       = NewStack()
 		scope          = &ScopeContext{nil, stack, nil}
 		evmInterpreter = NewEVMInterpreter(env)
 	)
-
 	env.interpreter = evmInterpreter
 	// convert args
 	intArgs := make([]*uint256.Int, len(args))
@@ -546,13 +550,14 @@ func BenchmarkOpIsZero(b *testing.B) {
 }
 
 func TestOpMstore(t *testing.T) {
-	stack, err := NewStack() // local stack
-	t.Error(err)
 	var (
 		env            = NewEVM(BlockContext{}, TxContext{}, nil, params.TestChainConfig, Config{})
+		stack, err     = NewStack()
 		mem            = NewMemory()
 		evmInterpreter = NewEVMInterpreter(env)
 	)
+
+	require.NoError(t, err)
 
 	env.interpreter = evmInterpreter
 	mem.Resize(64)
@@ -573,10 +578,9 @@ func TestOpMstore(t *testing.T) {
 }
 
 func BenchmarkOpMstore(bench *testing.B) {
-	stack, err := NewStack() // local stack
-	bench.Error(err)
 	var (
 		env            = NewEVM(BlockContext{}, TxContext{}, nil, params.TestChainConfig, Config{})
+		stack, _       = NewStack()
 		mem            = NewMemory()
 		evmInterpreter = NewEVMInterpreter(env)
 	)
@@ -596,9 +600,8 @@ func BenchmarkOpMstore(bench *testing.B) {
 }
 
 func TestOpTstore(t *testing.T) {
-	stack, err := NewStack() // local stack
-	t.Error(err)
 	var (
+		stack, err     = NewStack()
 		statedb, _     = state.New(types.EmptyRootHash, state.NewDatabase(rawdb.NewMemoryDatabase()), nil)
 		env            = NewEVM(BlockContext{}, TxContext{}, statedb, params.TestChainConfig, Config{})
 		mem            = NewMemory()
@@ -610,6 +613,9 @@ func TestOpTstore(t *testing.T) {
 		scopeContext   = ScopeContext{mem, stack, contract}
 		value          = common.Hex2Bytes("abcdef00000000000000abba000000000deaf000000c0de00100000000133700")
 	)
+
+
+	require.NoError(t, err)
 
 	// Add a stateObject for the caller and the contract being called
 	statedb.CreateAccount(caller)
@@ -745,13 +751,15 @@ func TestRandom(t *testing.T) {
 		{name: "emptyCodeHash", random: types.EmptyCodeHash},
 		{name: "hash(0x010203)", random: crypto.Keccak256Hash([]byte{0x01, 0x02, 0x03})},
 	} {
-		stack, err := NewStack() // local stack
-		t.Error(err)
 		var (
 			env            = NewEVM(BlockContext{Random: &tt.random}, TxContext{}, nil, params.TestChainConfig, Config{})
 			pc             = uint64(0)
+			stack, err  = NewStack()
 			evmInterpreter = env.interpreter
 		)
+
+		require.NoError(t, err)
+
 		opRandom(&pc, evmInterpreter.(*EVMInterpreter), &ScopeContext{nil, stack, nil})
 		if len(stack.Data) != 1 {
 			t.Errorf("Expected one item on stack after %v, got %d: ", tt.name, len(stack.Data))
@@ -787,13 +795,14 @@ func TestBlobHash(t *testing.T) {
 		{name: "out-of-bounds", idx: 25, expect: zero, hashes: []common.Hash{one, two, three}},
 		{name: "out-of-bounds (nil)", idx: 25, expect: zero, hashes: nil},
 	} {
-		stack, err := NewStack() // local stack
-		t.Error(err)
 		var (
+			stack, _     = NewStack() // local stack
 			env            = NewEVM(BlockContext{}, TxContext{BlobHashes: tt.hashes}, nil, params.TestChainConfig, Config{})
 			pc             = uint64(0)
 			evmInterpreter = env.interpreter
 		)
+
+		// t.Error(err)
 		stack.Push(uint256.NewInt(tt.idx))
 		opBlobHash(&pc, evmInterpreter.(*EVMInterpreter), &ScopeContext{nil, stack, nil})
 		if len(stack.Data) != 1 {
@@ -891,9 +900,8 @@ func TestOpMCopy(t *testing.T) {
 			wantGas: 9,
 		},
 	} {
-		stack, err := NewStack() // local stack
-		t.Error(err)
 		var (
+			stack, _       = NewStack() // local stack
 			env            = NewEVM(BlockContext{}, TxContext{}, nil, params.TestChainConfig, Config{})
 			pc             = uint64(0)
 			evmInterpreter = env.interpreter
