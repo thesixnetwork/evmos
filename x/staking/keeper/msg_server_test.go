@@ -245,6 +245,7 @@ func TestMsgCreateValidator(t *testing.T) {
 			)
 			msg, err := types.NewMsgCreateValidator(
 				sdk.ValAddress(validatorAddr).String(),
+				validatorAddr.String(),
 				pubKey,
 				coinToSelfBond,
 				types.NewDescription("T", "E", "S", "T", "Z"),

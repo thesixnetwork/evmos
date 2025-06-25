@@ -297,6 +297,7 @@ var _ = Describe("Staking module tests", func() {
 				)
 				createValMsg, err = types.NewMsgCreateValidator(
 					sdk.ValAddress(vestingAccount.AccAddr).String(),
+					vestingAccount.AccAddr.String(),
 					pubKey,
 					testutil.TestVestingSchedule.VestedCoinsPerPeriod.Add(*vestAccInitialBalance)[0],
 					types.NewDescription("T", "E", "S", "T", "Z"),

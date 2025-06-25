@@ -66,6 +66,7 @@ func (tf *stakingTxFactory) CreateValidator(operatorPriv cryptotypes.PrivKey, pu
 
 	msgCreateValidator, err := stakingtypes.NewMsgCreateValidator(
 		operatorAccAddr.String(),
+		operatorAccAddr.String(),
 		pubKey,
 		selfDelegation,
 		description,
