@@ -39,23 +39,27 @@ func (args *EvmTxArgs) ToTxData() (TxData, error) {
 //
 //	tx_priority = tip_price / priority_reduction
 func GetTxPriority(txData TxData, baseFee *big.Int) (priority int64) {
-	//hellll
-	// calculate priority based on effective gas price
-	tipPrice := txData.EffectiveGasPrice(baseFee)
-	// if london hardfork is not enabled, tipPrice is the gasPrice
-	if baseFee != nil {
-		tipPrice = new(big.Int).Sub(tipPrice, baseFee)
-	}
+	
+	// // calculate priority based on effective gas price
+	// tipPrice := txData.EffectiveGasPrice(baseFee)
+	// // if london hardfork is not enabled, tipPrice is the gasPrice
+	// if baseFee != nil {
+	// 	tipPrice = new(big.Int).Sub(tipPrice, baseFee)
+	// }
 
-	priority = math.MaxInt64
-	priorityBig := new(big.Int).Quo(tipPrice, DefaultPriorityReduction.BigInt())
+	// priority = math.MaxInt64
+	// priorityBig := new(big.Int).Quo(tipPrice, DefaultPriorityReduction.BigInt())
 
-	// safety check
-	if priorityBig.IsInt64() {
-		priority = priorityBig.Int64()
-	}
+	// // safety check
+	// if priorityBig.IsInt64() {
+	// 	priority = priorityBig.Int64()
+	// }
 
-	return priority
+	// return priority
+
+	nonce := txData.Nonce()
+	
+	return int64(^nonce) 
 }
 
 // Failed returns if the contract execution failed in vm errors
