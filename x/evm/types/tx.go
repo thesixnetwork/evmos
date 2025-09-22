@@ -39,6 +39,7 @@ func (args *EvmTxArgs) ToTxData() (TxData, error) {
 //
 //	tx_priority = tip_price / priority_reduction
 func GetTxPriority(txData TxData, baseFee *big.Int) (priority int64) {
+	//hellll
 	// calculate priority based on effective gas price
 	tipPrice := txData.EffectiveGasPrice(baseFee)
 	// if london hardfork is not enabled, tipPrice is the gasPrice
