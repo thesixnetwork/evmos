@@ -36,6 +36,7 @@ type HandlerOptions struct {
 	SigGasConsumer         func(meter storetypes.GasMeter, sig signing.SignatureV2, params authtypes.Params) error
 	MaxTxGasWanted         uint64
 	TxFeeChecker           ante.TxFeeChecker
+	AllowUnorderedTx       bool
 }
 
 // Validate checks if the keepers are defined

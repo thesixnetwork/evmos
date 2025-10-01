@@ -784,8 +784,9 @@ func NewEvmos(
 	app.SetBeginBlocker(app.BeginBlocker)
 
 	maxGasWanted := cast.ToUint64(appOpts.Get(srvflags.EVMMaxTxGasWanted))
+	unsafeUnorderedTx := cast.ToBool(appOpts.Get(srvflags.EVMUnsafeOrderedTx))
 
-	app.setAnteHandler(app.txConfig, maxGasWanted)
+	app.setAnteHandler(app.txConfig, maxGasWanted, unsafeUnorderedTx) 
 	app.setPostHandler()
 	app.SetEndBlocker(app.EndBlocker)
 	app.setupUpgradeHandlers()
@@ -844,7 +845,7 @@ func NewEvmos(
 // Name returns the name of the App
 func (app *Evmos) Name() string { return app.BaseApp.Name() }
 
-func (app *Evmos) setAnteHandler(txConfig client.TxConfig, maxGasWanted uint64) {
+func (app *Evmos) setAnteHandler(txConfig client.TxConfig, maxGasWanted uint64, unsafeUnorderedTx bool) {
 	options := ante.HandlerOptions{
 		Cdc:                    app.appCodec,
 		AccountKeeper:          app.AccountKeeper,
@@ -860,6 +861,7 @@ func (app *Evmos) setAnteHandler(txConfig client.TxConfig, maxGasWanted uint64) 
 		SigGasConsumer:         ante.SigVerificationGasConsumer,
 		MaxTxGasWanted:         maxGasWanted,
 		TxFeeChecker:           ethante.NewDynamicFeeChecker(app.EvmKeeper),
+		AllowUnorderedTx:       unsafeUnorderedTx,
 	}
 
 	if err := options.Validate(); err != nil {
