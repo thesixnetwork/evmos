@@ -4,13 +4,24 @@
 package v7
 
 import (
+	"cosmossdk.io/store/prefix"
 	storetypes "cosmossdk.io/store/types"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/ethereum/go-ethereum/common"
 
 	v6types "github.com/evmos/evmos/v20/x/evm/migrations/v7/types"
 	"github.com/evmos/evmos/v20/x/evm/types"
 )
+
+const (
+	prefixCode = iota + 1
+	prefixStorage
+	prefixParams
+	prefixCodeHash
+)
+
+var KeyPrefixCodeHash = []byte{prefixCodeHash}
 
 // MigrateStore migrates the x/evm module state from the consensus version 6 to
 // version 7. Specifically, it changes the type of the Params ExtraEIPs from
@@ -74,6 +85,15 @@ func MigrateStore(
 	bz := cdc.MustMarshal(&params)
 
 	store.Set(types.KeyPrefixParams, bz)
+
+	// REMOVE CODE HASH FROM KVSTORE COZ DUPLICATE WITH ETHAACOUNT
+	codeHashstore := prefix.NewStore(ctx.KVStore(storeKey), KeyPrefixCodeHash)
+	codeHashIterator := storetypes.KVStorePrefixIterator(codeHashstore, KeyPrefixCodeHash)
+	defer codeHashIterator.Close()
+	for ; codeHashIterator.Valid(); codeHashIterator.Next() {
+		addr := common.BytesToAddress(codeHashIterator.Key())
+		store.Delete(addr.Bytes())
+	}
 
 	return nil
 }
