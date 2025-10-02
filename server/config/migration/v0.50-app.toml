@@ -341,10 +341,10 @@ enable = false
 address = ":8080"
 
 # Network defines the name of the blockchain that will be returned by Rosetta.
-blockchain = "sixnet"
+blockchain = "app"
 
 # Network defines the name of the network that will be returned by Rosetta.
-network = "sixnet"
+network = "network"
 
 # TendermintRPC defines the endpoint to connect to CometBFT RPC,
 # specifying 'tcp://' before is not required, usually it's at port 26657
