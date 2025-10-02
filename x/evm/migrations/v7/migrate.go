@@ -74,5 +74,6 @@ func MigrateStore(
 	bz := cdc.MustMarshal(&params)
 
 	store.Set(types.KeyPrefixParams, bz)
+
 	return nil
 }
