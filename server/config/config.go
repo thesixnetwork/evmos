@@ -113,16 +113,16 @@ const (
 	DefaultGasAdjustment = 1.2
 
 	// DefaultRosettaBlockchain defines the default blockchain name for the rosetta server
-	DefaultRosettaBlockchain = "evmos"
+	DefaultRosettaBlockchain = "sixnet"
 
 	// DefaultRosettaNetwork defines the default network name for the rosetta server
-	DefaultRosettaNetwork = "evmos"
+	DefaultRosettaNetwork = "sixnet"
 
 	// DefaultRosettaGasToSuggest defines the default gas to suggest for the rosetta server
 	DefaultRosettaGasToSuggest = 300_000
 
 	// DefaultRosettaDenomToSuggest defines the default denom for fee suggestion
-	DefaultRosettaDenomToSuggest = "aevmos"
+	DefaultRosettaDenomToSuggest = "usix"
 
 	// ============================
 	//           MemIAVL
