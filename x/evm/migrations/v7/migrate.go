@@ -15,10 +15,11 @@ import (
 )
 
 const (
-	prefixCode = iota + 1
-	prefixStorage
-	prefixParams
-	prefixCodeHash
+	prefixCode = iota + 1 //nolint:all
+	prefixStorage //nolint:all
+	prefixParams //nolint:all
+	
+	prefixCodeHash // deprecate
 )
 
 var KeyPrefixCodeHash = []byte{prefixCodeHash}
@@ -60,8 +61,6 @@ func MigrateStore(
 		ArrowGlacierBlock:   paramsV6.ChainConfig.ArrowGlacierBlock,
 		GrayGlacierBlock:    paramsV6.ChainConfig.GrayGlacierBlock,
 		MergeNetsplitBlock:  paramsV6.ChainConfig.MergeNetsplitBlock,
-		// ShanghaiBlock:       paramsV6.ChainConfig.ShanghaiBlock,
-		// CancunBlock:         paramsV6.ChainConfig.CancunBlock,
 	}
 	params.AllowUnprotectedTxs = paramsV6.AllowUnprotectedTxs
 	params.ActiveStaticPrecompiles = paramsV6.ActivePrecompiles

@@ -50,3 +50,7 @@ func (k *Keeper) GetPrecompilesCallHook(ctx sdktypes.Context) types.CallHook {
 		return nil
 	}
 }
+
+func (k *Keeper)GetPrecompiles() map[common.Address]vm.PrecompiledContract {
+	return k.precompiles
+}
