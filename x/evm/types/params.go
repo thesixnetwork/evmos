@@ -38,9 +38,9 @@ var (
 
 	SIXDefaultStaticPrecompiles = []string{
 		SIXBankPrecompileAddress,
+		SIXStakingPrecompileAddress,
 		SIXDistributionPrecompileAddress,
 		SIXNFTManagerPrecompileAddress,
-		SIXStakingPrecompileAddress,
 		SIXTokenFactoryPrecompileAddress,
 	}
 
