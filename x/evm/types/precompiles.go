@@ -31,3 +31,11 @@ var AvailableStaticPrecompiles = []string{
 	BankPrecompileAddress,
 	GovPrecompileAddress,
 }
+
+const (
+	SIXBankPrecompileAddress = "0x0000000000000000000000000000000000001001"
+	SIXDistributionPrecompileAddress = "0x0000000000000000000000000000000000001007"
+	SIXNFTManagerPrecompileAddress = "0x0000000000000000000000000000000000001055"
+	SIXStakingPrecompileAddress = "0x0000000000000000000000000000000000001005"
+	SIXTokenFactoryPrecompileAddress = "0x0000000000000000000000000000000000001069"
+)

@@ -35,6 +35,15 @@ var (
 		BankPrecompileAddress,         // Bank precompile
 		GovPrecompileAddress,          // Gov precompile
 	}
+
+	SIXDefaultStaticPrecompiles = []string{
+		SIXBankPrecompileAddress,
+		SIXDistributionPrecompileAddress,
+		SIXNFTManagerPrecompileAddress,
+		SIXStakingPrecompileAddress,
+		SIXTokenFactoryPrecompileAddress,
+	}
+
 	// DefaultExtraEIPs defines the default extra EIPs to be included
 	// On v15, EIP 3855 was enabled
 	DefaultExtraEIPs = []int32{3855}
@@ -82,7 +91,7 @@ func DefaultParams() Params {
 		ChainConfig:             DefaultChainConfig(),
 		ExtraEIPs:               DefaultExtraEIPs,
 		AllowUnprotectedTxs:     DefaultAllowUnprotectedTxs,
-		ActiveStaticPrecompiles: DefaultStaticPrecompiles,
+		ActiveStaticPrecompiles: SIXDefaultStaticPrecompiles,
 		EVMChannels:             DefaultEVMChannels,
 		AccessControl:           DefaultAccessControl,
 	}

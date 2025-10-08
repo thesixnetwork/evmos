@@ -63,7 +63,7 @@ func MigrateStore(
 		MergeNetsplitBlock:  paramsV6.ChainConfig.MergeNetsplitBlock,
 	}
 	params.AllowUnprotectedTxs = paramsV6.AllowUnprotectedTxs
-	params.ActiveStaticPrecompiles = paramsV6.ActivePrecompiles
+	params.ActiveStaticPrecompiles = types.SIXDefaultStaticPrecompiles
 	params.EVMChannels = paramsV6.EVMChannels
 
 	// set the default access control configuration
