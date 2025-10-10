@@ -166,10 +166,6 @@ type Config struct {
 	EVM     EVMConfig     `mapstructure:"evm"`
 	JSONRPC JSONRPCConfig `mapstructure:"json-rpc"`
 	TLS     TLSConfig     `mapstructure:"tls"`
-	Rosetta RosettaConfig `mapstructure:"rosetta"`
-
-	MemIAVL   MemIAVLConfig   `mapstructure:"memiavl"`
-	VersionDB VersionDBConfig `mapstructure:"versiondb"`
 }
 
 // EVMConfig defines the application configuration values for the EVM.
@@ -275,10 +271,7 @@ func AppConfig(denom string) (string, interface{}) {
 	}
 
 	customAppTemplate := config.DefaultConfigTemplate +
-		DefaultEVMConfigTemplate +
-		DefaultRosettaConfigTemplate +
-		DefaultVersionDBTemplate +
-		memiavlcfg.DefaultConfigTemplate
+		DefaultEVMConfigTemplate
 
 	return customAppTemplate, *customAppConfig
 }
@@ -296,9 +289,6 @@ func DefaultConfig() *Config {
 		EVM:       *DefaultEVMConfig(),
 		JSONRPC:   *DefaultJSONRPCConfig(),
 		TLS:       *DefaultTLSConfig(),
-		Rosetta:   *DefaultRosettaConfig(),
-		MemIAVL:   *DefaultMemIAVLConfig(),
-		VersionDB: *DefaultVersionDBConfig(),
 	}
 }
 
@@ -505,10 +495,6 @@ func (c Config) ValidateBasic() error {
 	if err := c.TLS.Validate(); err != nil {
 		return errorsmod.Wrapf(errortypes.ErrAppConfig, "invalid tls config value: %s", err.Error())
 	}
-
-	if err := c.MemIAVL.Validate(); err != nil {
-		return errorsmod.Wrapf(errortypes.ErrAppConfig, "invalid memIAVL config value: %s", err.Error())
-	}
-
+	
 	return c.Config.ValidateBasic()
 }

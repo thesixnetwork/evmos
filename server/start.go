@@ -49,9 +49,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/server/types"
 	genutiltypes "github.com/cosmos/cosmos-sdk/x/genutil/types"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/rosetta"
-
 	"github.com/evmos/evmos/v20/cmd/evmosd/opendb"
 	"github.com/evmos/evmos/v20/indexer"
 	ethdebug "github.com/evmos/evmos/v20/rpc/namespaces/ethereum/debug"
@@ -484,10 +481,6 @@ func startInProcess(svrCtx *server.Context, clientCtx client.Context, opts Start
 		// we are guaranteed to be waiting for the "ListenForQuitSignals" goroutine.
 		return g.Wait()
 	}
-
-	if err := startRosettaServer(svrCtx, clientCtx, g, config); err != nil {
-		return err
-	}
 	// wait for signal capture and gracefully return
 	// we are guaranteed to be waiting for the "ListenForQuitSignals" goroutine.
 	return g.Wait()
@@ -638,54 +631,6 @@ func startJSONRPCServer(
 		return err
 	})
 	return
-}
-
-func startRosettaServer(
-	svrCtx *server.Context,
-	clientCtx client.Context,
-	g *errgroup.Group,
-	config config.Config,
-) error {
-	if !config.Rosetta.Enable {
-		return nil
-	}
-
-	offlineMode := config.Rosetta.Offline
-
-	// If GRPC is not enabled rosetta cannot work in online mode, so it works in
-	// offline mode.
-	if !config.GRPC.Enable {
-		offlineMode = true
-	}
-
-	minGasPrices, err := sdk.ParseDecCoins(config.MinGasPrices)
-	if err != nil {
-		svrCtx.Logger.Error("failed to parse minimum-gas-prices", "error", err.Error())
-		return err
-	}
-
-	conf := &rosetta.Config{
-		Blockchain:          config.Rosetta.Blockchain,
-		Network:             config.Rosetta.Network,
-		TendermintRPC:       svrCtx.Config.RPC.ListenAddress,
-		GRPCEndpoint:        config.GRPC.Address,
-		Addr:                config.Rosetta.Addr,
-		Retries:             config.Rosetta.Retries,
-		Offline:             offlineMode,
-		GasToSuggest:        config.Rosetta.GasToSuggest,
-		EnableFeeSuggestion: config.Rosetta.EnableFeeSuggestion,
-		GasPrices:           minGasPrices.Sort(),
-		Codec:               clientCtx.Codec.(*codec.ProtoCodec),
-		InterfaceRegistry:   clientCtx.InterfaceRegistry,
-	}
-
-	rosettaSrv, err := rosetta.ServerFromConfig(conf)
-	if err != nil {
-		return err
-	}
-
-	g.Go(rosettaSrv.Start)
-	return nil
 }
 
 // returns a function which returns the genesis doc from the genesis file.
