@@ -356,18 +356,16 @@ func (k *Keeper) ApplyMessageWithConfig(
 		refundQuotient = params.RefundQuotientEIP3529
 	}
 
-	// Get gasUsed from initial gas - leftover gas
-	gasUsed := msg.GasLimit - leftoverGas
+	// calculate gas refund
+	if msg.GasLimit < leftoverGas {
+		return nil, errorsmod.Wrap(types.ErrGasOverflow, "apply message")
+	}
+	temporaryGasUsed := msg.GasLimit - leftoverGas
+	refund := GasToRefund(stateDB.GetRefund(), temporaryGasUsed, refundQuotient)
 
-	// Apply refund counter, capped to a refund quotient
-	refund := min(gasUsed/refundQuotient, stateDB.GetRefund())
-
+	// update leftoverGas and temporaryGasUsed with refund amount
 	leftoverGas += refund
-	gasUsed -= refund
-
-	// Return ETH for remaining gas, exchanged at the original rate.
-	remaining := new(big.Int).Mul(new(big.Int).SetUint64(leftoverGas), msg.GasPrice)
-	stateDB.AddBalance(msg.From, remaining)
+	temporaryGasUsed -= refund
 
 	// EVM execution error needs to be available for the JSON-RPC client
 	var vmError string
@@ -393,37 +391,14 @@ func (k *Keeper) ApplyMessageWithConfig(
 		return nil, errorsmod.Wrapf(types.ErrGasOverflow, "minimumGasUsed(%s) is not a uint64", minimumGasUsed.TruncateInt().String())
 	}
 
-	finalGasUsed := math.LegacyMaxDec(minimumGasUsed, math.LegacyNewDec(int64(gasUsed))).TruncateInt().Uint64()
-
-	// Calculate and pay the fee
-	feeParam := k.feeMarketKeeper.GetParams(ctx)
-	if feeParam.NoBaseFee && msg.GasFeeCap.Sign() == 0 && msg.GasTipCap.Sign() == 0 {
-		// Skip fee payment when NoBaseFee is set and the fee fields
-		// are 0. This avoids a negative effectiveTip being applied to
-		// the coinbase when simulating calls.
-	} else {
-		effectiveTip := msg.GasPrice
-		if isLondon {
-			// For London, use the effective tip calculation
-			baseFee := k.getBaseFee(ctx, isLondon)
-			if baseFee == nil {
-				baseFee = big.NewInt(0)
-			}
-
-			effectiveTip = new(big.Int).Set(msg.GasTipCap)
-			if msg.GasFeeCap.Cmp(new(big.Int).Add(baseFee, msg.GasTipCap)) < 0 {
-				// If GasFeeCap < BaseFee + GasTipCap, use GasFeeCap - BaseFee
-				effectiveTip = new(big.Int).Sub(msg.GasFeeCap, baseFee)
-				if effectiveTip.Sign() < 0 {
-					effectiveTip = big.NewInt(0)
-				}
-			}
-		}
-
-		fee := new(big.Int).SetUint64(finalGasUsed)
-		fee.Mul(fee, effectiveTip)
-		stateDB.AddBalance(cfg.CoinBase, fee)
+	if msg.GasLimit < leftoverGas {
+		return nil, errorsmod.Wrapf(types.ErrGasOverflow, "message gas limit < leftover gas (%d < %d)", msg.GasLimit, leftoverGas)
 	}
+
+	finalGasUsed := math.LegacyMaxDec(minimumGasUsed, math.LegacyNewDec(int64(temporaryGasUsed))).TruncateInt().Uint64()
+
+	// reset leftoverGas, to be used by the tracer
+	leftoverGas = msg.GasLimit - finalGasUsed
 
 	return &types.MsgEthereumTxResponse{
 		GasUsed: finalGasUsed,
