@@ -4,6 +4,7 @@
 package types
 
 import (
+	"bytes"
 	"fmt"
 	"math/big"
 
@@ -126,4 +127,9 @@ func BinSearch(lo, hi uint64, executable func(uint64) (bool, *MsgEthereumTxRespo
 // `effectiveGasPrice = min(baseFee + tipCap, feeCap)`
 func EffectiveGasPrice(baseFee, feeCap, tipCap *big.Int) *big.Int {
 	return math.BigMin(new(big.Int).Add(tipCap, baseFee), feeCap)
+}
+
+// IsEmptyCodeHash checks if the given byte slice represents an empty code hash.
+func IsEmptyCodeHash(bz []byte) bool {
+	return bytes.Equal(bz, EmptyCodeHash)
 }

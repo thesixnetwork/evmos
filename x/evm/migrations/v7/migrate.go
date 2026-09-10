@@ -15,10 +15,10 @@ import (
 )
 
 const (
-	prefixCode = iota + 1 //nolint:all
-	prefixStorage //nolint:all
-	prefixParams //nolint:all
-	
+	prefixCode    = iota + 1 //nolint:all
+	prefixStorage            //nolint:all
+	prefixParams             //nolint:all
+
 	prefixCodeHash // deprecate
 )
 

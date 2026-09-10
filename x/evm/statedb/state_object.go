@@ -14,6 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
+
 	evmostypes "github.com/evmos/evmos/v20/types"
 )
 
@@ -91,8 +92,9 @@ type stateObject struct {
 	code    []byte
 
 	// state storage
-	originStorage Storage
-	dirtyStorage  Storage
+	originStorage  Storage // Storage entries that have been accessed within the current block
+	dirtyStorage   Storage // Storage entries that have been modified within the current transaction
+	pendingStorage Storage // Storage entries that have been modified within the current block
 	// overridden state, when not nil, replace the whole committed state,
 	// mainly to support the stateOverrides in eth_call.
 	overrideStorage Storage
@@ -171,6 +173,19 @@ func (s *stateObject) AddBalance(amount *big.Int) {
 func (s *stateObject) SubBalance(amount *big.Int) {
 	if amount.Sign() == 0 {
 		return
+	}
+	// Guard against balance underflow (cosmos/evm security fix, PR #1176).
+	// Subtracting more than the account holds would produce a negative in-memory
+	// balance which, at commit time, desyncs the StateDB from the bank: the
+	// SetBalance reconciliation in the keeper mints EVM tokens (asix) to cover a
+	// positive delta, so an underflow here can mint unbacked asix from the EVM
+	// module - i.e. tokens not backed by usix locked in the tokenmngr account.
+	// Fail closed (the tx panics and is rolled back) rather than allow it.
+	if s.Balance().Cmp(amount) < 0 {
+		panic(fmt.Sprintf(
+			"state balance underflow for %s: have=%s sub=%s",
+			s.address.Hex(), s.Balance().String(), amount.String(),
+		))
 	}
 	s.SetBalance(new(big.Int).Sub(s.Balance(), amount))
 }

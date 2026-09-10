@@ -3,9 +3,10 @@
 package v6
 
 import (
-	"github.com/cosmos/cosmos-sdk/codec"
 	storetypes "cosmossdk.io/store/types"
+	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+
 	"github.com/evmos/evmos/v20/utils"
 	"github.com/evmos/evmos/v20/x/evm/types"
 
@@ -36,9 +37,8 @@ func MigrateStore(
 	var extraEips []int32
 
 	for _, eip := range paramsV5.ExtraEIPs {
-		extraEips  = append(extraEips, int32(eip))
+		extraEips = append(extraEips, int32(eip))
 	}
-
 
 	params.ExtraEIPs = extraEips
 	params.ChainConfig = types.ChainConfig{

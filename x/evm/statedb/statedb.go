@@ -65,6 +65,13 @@ type StateDB struct {
 	// Transient storage
 	transientStorage transientStorage
 
+	// pendingStorage caches storage slots already flushed to the keeper within
+	// this transaction. It is used to skip redundant writes across the multiple
+	// commits that happen on precompile calls (CommitWithCacheCtx then Commit).
+	// It MUST stay separate from transientStorage: the two share the (addr, slot)
+	// keyspace, and reusing the EIP-1153 transient map here corrupts TSTORE/TLOAD.
+	pendingStorage map[common.Address]Storage
+
 	// Preimages occurred seen by VM in the scope of block.
 	preimages map[common.Hash][]byte
 
@@ -81,6 +88,7 @@ func New(ctx sdk.Context, keeper Keeper, txConfig TxConfig) *StateDB {
 		journal:          newJournal(),
 		accessList:       newAccessList(),
 		transientStorage: newTransientStorage(),
+		pendingStorage:   make(map[common.Address]Storage),
 		logs:             make(map[common.Hash][]*ethtypes.Log),
 		preimages:        make(map[common.Hash][]byte),
 		txConfig:         txConfig,
@@ -140,7 +148,11 @@ func (s *StateDB) AddLog(log *ethtypes.Log) {
 	log.TxHash = s.txConfig.TxHash
 	log.BlockHash = s.txConfig.BlockHash
 	log.TxIndex = s.txConfig.TxIndex
-	log.Index = s.txConfig.LogIndex + uint(len(s.logs))
+	// s.logs is a map keyed by tx hash; the per-tx log count is the length of
+	// THIS tx's slice, not the map size. Using len(s.logs) gave every log after
+	// the first the same Index (base+1), corrupting receipts for any multi-event
+	// tx.
+	log.Index = s.txConfig.LogIndex + uint(len(s.logs[s.txConfig.TxHash]))
 	s.logs[s.txConfig.TxHash] = append(s.logs[s.txConfig.TxHash], log)
 }
 
@@ -540,6 +552,8 @@ func (s *StateDB) Prepare(rules params.Rules, sender, coinbase common.Address, d
 	}
 	// Reset transient storage at the beginning of transaction execution
 	s.transientStorage = newTransientStorage()
+	// Reset the per-tx pending-commit storage cache as well.
+	s.pendingStorage = make(map[common.Address]Storage)
 }
 
 // AddAddressToAccessList adds the given address to the access list
@@ -662,17 +676,24 @@ func (s *StateDB) commitWithCtx(ctx sdk.Context) error {
 			for _, key := range storageKeys {
 				dirtyValue := obj.dirtyStorage[key]
 				originValue := obj.originStorage[key]
-				transientStorageValue, ok := obj.db.transientStorage[addr][key]
-				// Skip noop changes, persist actual changes
-				if (ok && transientStorageValue == dirtyValue) || (!ok && dirtyValue == originValue) {
+				pendingValue, alreadyCommitted := s.pendingStorage[addr][key]
+				// Skip noop changes, persist actual changes. `pendingStorage`
+				// tracks values already flushed to the keeper earlier in this tx
+				// (multiple commits happen on precompile calls); if the slot was
+				// already committed with the same value, there is nothing to do.
+				if (alreadyCommitted && pendingValue == dirtyValue) || (!alreadyCommitted && dirtyValue == originValue) {
 					continue
 				}
 				s.keeper.SetState(ctx, obj.Address(), key, dirtyValue.Bytes())
-				// Update the pendingStorage cache to the new value.
-				// This is specially needed for precompiles calls where
-				// multiple Commits calls are done within the same transaction
-				// for the appropriate changes to be committed.
-				s.SetTransientState(addr, key, dirtyValue)
+				// Record the committed value so subsequent commits within the same
+				// transaction skip re-writing it. Kept separate from the EIP-1153
+				// transient storage to avoid corrupting TSTORE/TLOAD.
+				inner := s.pendingStorage[addr]
+				if inner == nil {
+					inner = make(Storage)
+					s.pendingStorage[addr] = inner
+				}
+				inner[key] = dirtyValue
 			}
 		}
 	}

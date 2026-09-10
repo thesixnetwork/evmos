@@ -6,6 +6,7 @@ package keeper
 import (
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/evmos/evmos/v20/x/evm/core/vm"
 	"github.com/evmos/evmos/v20/x/evm/types"
 )
@@ -22,16 +23,23 @@ func (k *Keeper) GetPrecompileInstance(
 	address common.Address,
 ) (*Precompiles, bool, error) {
 	params := k.GetParams(ctx)
-	addressMap := make(map[common.Address]vm.PrecompiledContract)
 	precompile, found, err := k.GetStaticPrecompileInstance(&params, address)
 	if err != nil {
 		return nil, false, err
 	}
-	addressMap[address] = precompile
+	// When the address is not a precompile, return an empty result instead of a
+	// map holding a nil contract with a populated Addresses slice, which is a
+	// malformed value that traps any caller not checking `found` first.
+	if !found {
+		return &Precompiles{
+			Map:       map[common.Address]vm.PrecompiledContract{},
+			Addresses: []common.Address{},
+		}, false, nil
+	}
 	return &Precompiles{
-		Map:       addressMap,
+		Map:       map[common.Address]vm.PrecompiledContract{address: precompile},
 		Addresses: []common.Address{address},
-	}, found, nil
+	}, true, nil
 }
 
 // GetPrecompilesCallHook returns a closure that can be used to instantiate the EVM with a specific
@@ -51,6 +59,6 @@ func (k *Keeper) GetPrecompilesCallHook(ctx sdktypes.Context) types.CallHook {
 	}
 }
 
-func (k *Keeper)GetPrecompiles() map[common.Address]vm.PrecompiledContract {
+func (k *Keeper) GetPrecompiles() map[common.Address]vm.PrecompiledContract {
 	return k.precompiles
 }
