@@ -1,5 +1,3 @@
-// Copyright Tharsis Labs Ltd.(Evmos)
-// SPDX-License-Identifier:ENCL-1.0(https://github.com/evmos/evmos/blob/main/LICENSE)
 syntax = "proto3";
 package ethermint.evm.v1;
 
@@ -57,16 +55,6 @@ service Query {
     option (google.api.http).get = "/evmos/evm/v1/eth_call";
   }
 
-  // EthCall implements the `eth_call` rpc api
-  rpc EthCallWithOverride(EthCallWithOverrideRequest) returns (MsgEthereumTxResponse) {
-    option (google.api.http).get = "/ethermint/evm/v1/eth_call_overides";
-  }
-
-  // EthCall implements the `eth_call` rpc api
-  rpc EstimateGasWithOverride(EthCallWithOverrideRequest) returns (EstimateGasResponse) {
-    option (google.api.http).get = "/evmos/evm/v1/estimate_gas_overides";
-  }
-
   // EstimateGas implements the `eth_estimateGas` rpc api
   rpc EstimateGas(EthCallRequest) returns (EstimateGasResponse) {
     option (google.api.http).get = "/evmos/evm/v1/estimate_gas";
@@ -86,6 +74,11 @@ service Query {
   // it's similar to feemarket module's method, but also checks london hardfork status.
   rpc BaseFee(QueryBaseFeeRequest) returns (QueryBaseFeeResponse) {
     option (google.api.http).get = "/evmos/evm/v1/base_fee";
+  }
+
+  // TraceTx implements the `debug_traceTransaction` rpc api
+  rpc TraceCall(QueryTraceCallRequest) returns (QueryTraceTxResponse) {
+    option (google.api.http).get = "/evmos/evm/v1/trace_call";
   }
 }
 
@@ -238,20 +231,8 @@ message EthCallRequest {
   bytes proposer_address = 3 [(gogoproto.casttype) = "github.com/cosmos/cosmos-sdk/types.ConsAddress"];
   // chain_id is the eip155 chain id parsed from the requested block header
   int64 chain_id = 4;
-}
 
-// EthCallWithOverrideRequest defines EthCall request
-message EthCallWithOverrideRequest {
-  // args uses the same json format as the json rpc api.
-  bytes args = 1;
-  // gas_cap defines the default gas cap to be used
-  uint64 gas_cap = 2;
-  // proposer_address of the requested block in hex format
-  bytes proposer_address = 3 [(gogoproto.casttype) = "github.com/cosmos/cosmos-sdk/types.ConsAddress"];
-  // chain_id is the eip155 chain id parsed from the requested block header
-  int64 chain_id = 4;
-
-  StateOverride overrides = 5;
+  bytes overrides = 5;
 }
 
 // EstimateGasResponse defines EstimateGas response
@@ -290,6 +271,15 @@ message QueryTraceTxRequest {
   int64 chain_id = 9;
   // block_max_gas of the block of the requested transaction
   int64 block_max_gas = 10;
+}
+
+message QueryTraceCallRequest {
+  // same json format as the json rpc api.
+  bytes args = 1;
+  // the default gas cap to be used
+  uint64 gas_cap = 2;
+  // TraceConfig holds extra parameters to trace functions.
+  TraceCallConfig config = 3;
 }
 
 // QueryTraceTxResponse defines TraceTx response
@@ -335,32 +325,11 @@ message QueryBaseFeeResponse {
   string base_fee = 1 [(gogoproto.customtype) = "cosmossdk.io/math.Int"];
 }
 
-message OverrideAccount {
-  uint64 nonce = 1;
-  bytes code = 2;
-  string balance = 3;
-  map<string, string> state = 4;
-  map<string, string> state_diff = 5;
-}
-
-// StateOverride is a map of addresses to OverrideAccount.
-message StateOverride {
-  map<string, OverrideAccount> accounts = 1;
-}
-
-message BlockOverrides {
-  string number = 1;
-  string defficulty = 2;
-  uint64 time = 3;
-  uint64 gas_limit = 4;
-  string coinbase = 5;
-  string random = 6;
-  string base_fee = 7;
-  string blob_base_fee = 8;
-}
-
 message TraceCallConfig {
   TraceConfig trace_config = 1;
-  StateOverride state_overrides = 2;
-  BlockOverrides block_overrieds = 3;
+  // state_overrides holds the state overrides, JSON-encoded in the same format
+  // as the eth_call json-rpc api (map of address to account override).
+  bytes state_overrides = 2;
+  // block_overrides holds the block context overrides, JSON-encoded.
+  bytes block_overrides = 3;
 }
