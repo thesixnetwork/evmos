@@ -31,7 +31,6 @@ const (
 	Query_TraceTx_FullMethodName          = "/ethermint.evm.v1.Query/TraceTx"
 	Query_TraceBlock_FullMethodName       = "/ethermint.evm.v1.Query/TraceBlock"
 	Query_BaseFee_FullMethodName          = "/ethermint.evm.v1.Query/BaseFee"
-	Query_TraceCall_FullMethodName        = "/ethermint.evm.v1.Query/TraceCall"
 )
 
 // QueryClient is the client API for Query service.
@@ -67,8 +66,6 @@ type QueryClient interface {
 	// BaseFee queries the base fee of the parent block of the current block,
 	// it's similar to feemarket module's method, but also checks london hardfork status.
 	BaseFee(ctx context.Context, in *QueryBaseFeeRequest, opts ...grpc.CallOption) (*QueryBaseFeeResponse, error)
-	// TraceTx implements the `debug_traceTransaction` rpc api
-	TraceCall(ctx context.Context, in *QueryTraceCallRequest, opts ...grpc.CallOption) (*QueryTraceTxResponse, error)
 }
 
 type queryClient struct {
@@ -199,16 +196,6 @@ func (c *queryClient) BaseFee(ctx context.Context, in *QueryBaseFeeRequest, opts
 	return out, nil
 }
 
-func (c *queryClient) TraceCall(ctx context.Context, in *QueryTraceCallRequest, opts ...grpc.CallOption) (*QueryTraceTxResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(QueryTraceTxResponse)
-	err := c.cc.Invoke(ctx, Query_TraceCall_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // QueryServer is the server API for Query service.
 // All implementations must embed UnimplementedQueryServer
 // for forward compatibility.
@@ -242,8 +229,6 @@ type QueryServer interface {
 	// BaseFee queries the base fee of the parent block of the current block,
 	// it's similar to feemarket module's method, but also checks london hardfork status.
 	BaseFee(context.Context, *QueryBaseFeeRequest) (*QueryBaseFeeResponse, error)
-	// TraceTx implements the `debug_traceTransaction` rpc api
-	TraceCall(context.Context, *QueryTraceCallRequest) (*QueryTraceTxResponse, error)
 	mustEmbedUnimplementedQueryServer()
 }
 
@@ -289,9 +274,6 @@ func (UnimplementedQueryServer) TraceBlock(context.Context, *QueryTraceBlockRequ
 }
 func (UnimplementedQueryServer) BaseFee(context.Context, *QueryBaseFeeRequest) (*QueryBaseFeeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method BaseFee not implemented")
-}
-func (UnimplementedQueryServer) TraceCall(context.Context, *QueryTraceCallRequest) (*QueryTraceTxResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method TraceCall not implemented")
 }
 func (UnimplementedQueryServer) mustEmbedUnimplementedQueryServer() {}
 func (UnimplementedQueryServer) testEmbeddedByValue()               {}
@@ -530,24 +512,6 @@ func _Query_BaseFee_Handler(srv interface{}, ctx context.Context, dec func(inter
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_TraceCall_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryTraceCallRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(QueryServer).TraceCall(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Query_TraceCall_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).TraceCall(ctx, req.(*QueryTraceCallRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // Query_ServiceDesc is the grpc.ServiceDesc for Query service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -602,10 +566,6 @@ var Query_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "BaseFee",
 			Handler:    _Query_BaseFee_Handler,
-		},
-		{
-			MethodName: "TraceCall",
-			Handler:    _Query_TraceCall_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

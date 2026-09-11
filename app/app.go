@@ -19,6 +19,7 @@ import (
 	"cosmossdk.io/core/appmodule"
 	runtimeservices "github.com/cosmos/cosmos-sdk/runtime/services"
 	"github.com/cosmos/gogoproto/proto"
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/gorilla/mux"
 	"github.com/rakyll/statik/fs"
@@ -521,20 +522,10 @@ func NewEvmos(
 		),
 	)
 
+	// init not precompile
+	precompile := new(map[common.Address]vm.PrecompiledContract)
 	// We call this after setting the hooks to ensure that the hooks are set on the keeper
-	evmKeeper.WithStaticPrecompiles(
-		evmkeeper.NewAvailableStaticPrecompiles(
-			*stakingKeeper,
-			app.DistrKeeper,
-			app.BankKeeper,
-			app.Erc20Keeper,
-			app.VestingKeeper,
-			app.AuthzKeeper,
-			app.TransferKeeper,
-			app.IBCKeeper.ChannelKeeper,
-			app.GovKeeper,
-		),
-	)
+	evmKeeper.WithStaticPrecompiles(*precompile)
 
 	// Override the ICS20 app module
 	transferModule := transfer.NewAppModule(app.TransferKeeper)
@@ -786,7 +777,7 @@ func NewEvmos(
 	maxGasWanted := cast.ToUint64(appOpts.Get(srvflags.EVMMaxTxGasWanted))
 	unsafeUnorderedTx := cast.ToBool(appOpts.Get(srvflags.EVMUnsafeOrderedTx))
 
-	app.setAnteHandler(app.txConfig, maxGasWanted, unsafeUnorderedTx) 
+	app.setAnteHandler(app.txConfig, maxGasWanted, unsafeUnorderedTx)
 	app.setPostHandler()
 	app.SetEndBlocker(app.EndBlocker)
 	app.setupUpgradeHandlers()

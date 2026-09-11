@@ -1,3 +1,5 @@
+// Copyright Tharsis Labs Ltd.(Evmos)
+// SPDX-License-Identifier:ENCL-1.0(https://github.com/evmos/evmos/blob/main/LICENSE)
 syntax = "proto3";
 package ethermint.evm.v1;
 
@@ -76,10 +78,10 @@ service Query {
     option (google.api.http).get = "/evmos/evm/v1/base_fee";
   }
 
-  // TraceTx implements the `debug_traceTransaction` rpc api
-  rpc TraceCall(QueryTraceCallRequest) returns (QueryTraceTxResponse) {
-    option (google.api.http).get = "/evmos/evm/v1/trace_call";
-  }
+  // // TraceTx implements the `debug_traceTransaction` rpc api
+  // rpc TraceCall(QueryTraceCallRequest) returns (QueryTraceTxResponse) {
+  //   option (google.api.http).get = "/evmos/evm/v1/trace_call";
+  // }
 }
 
 // QueryAccountRequest is the request type for the Query/Account RPC method.
@@ -273,14 +275,14 @@ message QueryTraceTxRequest {
   int64 block_max_gas = 10;
 }
 
-message QueryTraceCallRequest {
-  // same json format as the json rpc api.
-  bytes args = 1;
-  // the default gas cap to be used
-  uint64 gas_cap = 2;
-  // TraceConfig holds extra parameters to trace functions.
-  TraceCallConfig config = 3;
-}
+// message QueryTraceCallRequest {
+//   // same json format as the json rpc api.
+//   bytes args = 1;
+//   // the default gas cap to be used
+//   uint64 gas_cap = 2;
+//   // TraceConfig holds extra parameters to trace functions.
+//   TraceCallConfig config = 3;
+// }
 
 // QueryTraceTxResponse defines TraceTx response
 message QueryTraceTxResponse {

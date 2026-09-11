@@ -303,61 +303,27 @@ func (b *Backend) EstimateGas(args evmtypes.TransactionArgs, blockNrOptional *rp
 		return 0, err
 	}
 
-	header, err := b.TendermintBlockByNumber(blockNr)
-	if err != nil {
-		// the error message imitates geth behavior
-		return 0, errors.New("header not found")
-	}
-
-	var gas uint64
-
-	// From ContextWithHeight: if the provided height is 0,
-	// it will return an empty context and the gRPC query will use
-	// the latest block height for querying.
-
+	var overridesBz []byte
 	if overrides != nil {
-		req := evmtypes.EthCallWithOverrideRequest{
-			Args:            bz,
-			GasCap:          b.RPCGasCap(),
-			ProposerAddress: sdk.ConsAddress(header.Block.ProposerAddress),
-			ChainId:         b.chainID.Int64(),
-			Overrides:       overrides.ToProtoStateOverride(),
-		}
-
-		res, err := b.queryClient.EstimateGasWithOverride(rpctypes.ContextWithHeight(blockNr.Int64()), &req)
+		overridesBz, err = json.Marshal(overrides)
 		if err != nil {
 			return 0, err
 		}
-
-		if err = handleRevertError(res.VmError, res.Ret); err != nil {
-			return 0, err
-		}
-
-		gas = res.Gas
-
-	} else {
-
-		req := evmtypes.EthCallRequest{
-			Args:            bz,
-			GasCap:          b.RPCGasCap(),
-			ProposerAddress: sdk.ConsAddress(header.Block.ProposerAddress),
-			ChainId:         b.chainID.Int64(),
-		}
-
-		res, err := b.queryClient.EstimateGas(rpctypes.ContextWithHeight(blockNr.Int64()), &req)
-		if err != nil {
-			return 0, err
-		}
-
-		if err = handleRevertError(res.VmError, res.Ret); err != nil {
-			return 0, err
-		}
-
-		gas = res.Gas
 	}
 
-	return hexutil.Uint64(gas), nil
+	req := evmtypes.EthCallRequest{
+		Args:      bz,
+		GasCap:    b.RPCGasCap(),
+		Overrides: overridesBz,
+	}
+
+	res, err := b.queryClient.EstimateGas(rpctypes.ContextWithHeight(blockNr.Int64()), &req)
+	if err != nil {
+		return 0, err
+	}
+	return hexutil.Uint64(res.Gas), nil
 }
+
 
 // DoCall performs a simulated call operation through the evmtypes. It returns the
 // estimated gas used on the operation or an error if fails.

@@ -227,6 +227,14 @@ func (k Keeper) EthCall(c context.Context, req *types.EthCallRequest) (*types.Ms
 
 	ctx := sdk.UnwrapSDKContext(c)
 
+	var overrides *rpctypes.StateOverride
+	if len(req.Overrides) > 0 {
+		overrides = new(rpctypes.StateOverride)
+		if err := json.Unmarshal(req.Overrides, overrides); err != nil {
+			return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("invalid state overrides format: %s", err.Error()))
+		}
+	}
+
 	var args types.TransactionArgs
 	err := json.Unmarshal(req.Args, &args)
 	if err != nil {
@@ -253,7 +261,7 @@ func (k Keeper) EthCall(c context.Context, req *types.EthCallRequest) (*types.Ms
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash()))
 
 	// pass false to not commit StateDB
-	res, err := k.ApplyMessageWithConfig(ctx, *msg, nil, false, cfg, txConfig, nil)
+	res, err := k.ApplyMessageWithConfig(ctx, *msg, nil, false, cfg, txConfig, overrides)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -291,6 +299,14 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 	err = json.Unmarshal(req.Args, &args)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	var overrides *rpctypes.StateOverride
+	if len(req.Overrides) > 0 {
+		overrides = new(rpctypes.StateOverride)
+		if err := json.Unmarshal(req.Overrides, overrides); err != nil {
+			return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("invalid state overrides format: %s", err.Error()))
+		}
 	}
 
 	// Binary search the gas requirement, as it may be higher than the amount used
@@ -382,7 +398,7 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 			tmpCtx = tmpCtx.WithGasMeter(gasMeter)
 		}
 		// pass false to not commit StateDB
-		rsp, err = k.ApplyMessageWithConfig(tmpCtx, msg, nil, false, cfg, txConfig, nil)
+		rsp, err = k.ApplyMessageWithConfig(tmpCtx, msg, nil, false, cfg, txConfig, overrides)
 		if err != nil {
 			if errors.Is(err, core.ErrIntrinsicGas) {
 				return true, nil, nil // Special case, raise gas limit
@@ -422,53 +438,53 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 	return &types.EstimateGasResponse{Gas: hi}, nil
 }
 
-// TraceCall configures a new tracer according to the provided configuration, and
-// executes the given call message in the provided environment. State overrides
-// carried in the request config are applied before execution. The return value
-// is tracer dependent.
-func (k Keeper) TraceCall(c context.Context, req *types.QueryTraceCallRequest) (*types.QueryTraceTxResponse, error) {
-	if req == nil {
-		return nil, status.Error(codes.InvalidArgument, "empty request")
-	}
+// // TraceCall configures a new tracer according to the provided configuration, and
+// // executes the given call message in the provided environment. State overrides
+// // carried in the request config are applied before execution. The return value
+// // is tracer dependent.
+// func (k Keeper) TraceCall(c context.Context, req *types.QueryTraceCallRequest) (*types.QueryTraceTxResponse, error) {
+// 	if req == nil {
+// 		return nil, status.Error(codes.InvalidArgument, "empty request")
+// 	}
 
-	ctx := sdk.UnwrapSDKContext(c)
+// 	ctx := sdk.UnwrapSDKContext(c)
 
-	var args types.TransactionArgs
-	if err := json.Unmarshal(req.Args, &args); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
+// 	var args types.TransactionArgs
+// 	if err := json.Unmarshal(req.Args, &args); err != nil {
+// 		return nil, status.Error(codes.InvalidArgument, err.Error())
+// 	}
 
-	cfg, err := k.EVMConfig(ctx, GetProposerAddress(ctx, nil), (*big.Int)(args.ChainID))
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
+// 	cfg, err := k.EVMConfig(ctx, GetProposerAddress(ctx, nil), (*big.Int)(args.ChainID))
+// 	if err != nil {
+// 		return nil, status.Error(codes.Internal, err.Error())
+// 	}
 
-	// ApplyMessageWithConfig expects a correct nonce set in msg
-	nonce := k.GetNonce(ctx, args.GetFrom())
-	args.Nonce = (*hexutil.Uint64)(&nonce)
+// 	// ApplyMessageWithConfig expects a correct nonce set in msg
+// 	nonce := k.GetNonce(ctx, args.GetFrom())
+// 	args.Nonce = (*hexutil.Uint64)(&nonce)
 
-	msg, err := args.ToMessage(req.GasCap, cfg.BaseFee)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
+// 	msg, err := args.ToMessage(req.GasCap, cfg.BaseFee)
+// 	if err != nil {
+// 		return nil, status.Error(codes.InvalidArgument, err.Error())
+// 	}
 
-	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash()))
+// 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash()))
 
-	// pass false to not commit StateDB; state overrides are read from req.Config
-	result, _, err := k.traceCall(ctx, cfg, txConfig, *msg, req.Config, false)
-	if err != nil {
-		return nil, err
-	}
+// 	// pass false to not commit StateDB; state overrides are read from req.Config
+// 	result, _, err := k.traceCall(ctx, cfg, txConfig, *msg, req.Config, false)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	resultData, err := json.Marshal(result)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
+// 	resultData, err := json.Marshal(result)
+// 	if err != nil {
+// 		return nil, status.Error(codes.Internal, err.Error())
+// 	}
 
-	return &types.QueryTraceTxResponse{
-		Data: resultData,
-	}, nil
-}
+// 	return &types.QueryTraceTxResponse{
+// 		Data: resultData,
+// 	}, nil
+// }
 
 // TraceTx configures a new tracer according to the provided configuration, and
 // executes the given message in the provided environment. The return value will
