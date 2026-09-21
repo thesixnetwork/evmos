@@ -162,6 +162,17 @@ type (
 		multiStore storetypes.CacheMultiStore
 		events     sdk.Events
 	}
+	// pendingStorageChange tracks mutations of the pendingStorage
+	// commit-cache so they revert together with the flush that produced
+	// them. Without this, a reverted precompile-frame flush leaves the slot
+	// marked as committed while the store rolls back, and a later commit of
+	// the same value is skipped — silently dropping the SSTORE.
+	pendingStorageChange struct {
+		account  *common.Address
+		key      common.Hash
+		prevalue common.Hash
+		hadValue bool
+	}
 )
 
 var (
@@ -178,7 +189,25 @@ var (
 	_ journalEntry = accessListAddSlotChange{}
 	_ journalEntry = transientStorageChange{}
 	_ journalEntry = precompileCallChange{}
+	_ journalEntry = pendingStorageChange{}
 )
+
+func (ch pendingStorageChange) revert(s *StateDB) {
+	if ch.hadValue {
+		inner := s.pendingStorage[*ch.account]
+		if inner == nil {
+			inner = make(Storage)
+			s.pendingStorage[*ch.account] = inner
+		}
+		inner[ch.key] = ch.prevalue
+	} else if inner := s.pendingStorage[*ch.account]; inner != nil {
+		delete(inner, ch.key)
+	}
+}
+
+func (ch pendingStorageChange) dirtied() *common.Address {
+	return nil
+}
 
 func (pc precompileCallChange) revert(s *StateDB) {
 	// rollback multi store from cache ctx to the previous

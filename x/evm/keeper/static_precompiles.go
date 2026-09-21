@@ -1,3 +1,5 @@
+// Copyright Tharsis Labs Ltd.(Evmos)
+// SPDX-License-Identifier:ENCL-1.0(https://github.com/evmos/evmos/blob/main/LICENSE)
 package keeper
 
 import (
@@ -16,13 +18,17 @@ import (
 // removed during migration as it targeted the evmos precompile signatures.
 
 // WithStaticPrecompiles sets the available static precompiled contracts.
+// An empty map is valid: this fork runs without evmos static precompiles
+// unless the consuming chain (six-protocol) wires its own set. Upstream's
+// empty-map panic would make the constructor unusable for any app that
+// intentionally has none (e.g. this repo's own test app).
 func (k *Keeper) WithStaticPrecompiles(precompiles map[common.Address]vm.PrecompiledContract) *Keeper {
 	if k.precompiles != nil {
 		panic("available precompiles map already set")
 	}
 
-	if len(precompiles) == 0 {
-		panic("empty precompiled contract map")
+	if precompiles == nil {
+		precompiles = map[common.Address]vm.PrecompiledContract{}
 	}
 
 	k.precompiles = precompiles

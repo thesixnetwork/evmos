@@ -92,9 +92,8 @@ type stateObject struct {
 	code    []byte
 
 	// state storage
-	originStorage  Storage // Storage entries that have been accessed within the current block
-	dirtyStorage   Storage // Storage entries that have been modified within the current transaction
-	pendingStorage Storage // Storage entries that have been modified within the current block
+	originStorage Storage // Storage entries that have been accessed within the current block
+	dirtyStorage  Storage // Storage entries that have been modified within the current transaction
 	// overridden state, when not nil, replace the whole committed state,
 	// mainly to support the stateOverrides in eth_call.
 	overrideStorage Storage

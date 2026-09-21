@@ -687,7 +687,18 @@ func (s *StateDB) commitWithCtx(ctx sdk.Context) error {
 				s.keeper.SetState(ctx, obj.Address(), key, dirtyValue.Bytes())
 				// Record the committed value so subsequent commits within the same
 				// transaction skip re-writing it. Kept separate from the EIP-1153
-				// transient storage to avoid corrupting TSTORE/TLOAD.
+				// transient storage to avoid corrupting TSTORE/TLOAD. The mutation
+				// is journaled so that reverting past this flush also forgets the
+				// slot was committed — the store rolls back with the revert, and a
+				// stale pending entry would make a later same-value commit skip
+				// the write (silently dropped SSTORE).
+				account := addr
+				s.journal.append(pendingStorageChange{
+					account:  &account,
+					key:      key,
+					prevalue: pendingValue,
+					hadValue: alreadyCommitted,
+				})
 				inner := s.pendingStorage[addr]
 				if inner == nil {
 					inner = make(Storage)
